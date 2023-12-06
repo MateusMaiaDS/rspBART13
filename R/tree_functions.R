@@ -963,7 +963,7 @@ change_interaction <-  function(tree,
 # ============
 updateBetas <- function(tree,
                         curr_part_res,
-                        data){
+                        data,j){
 
 
   # Getting the terminals
