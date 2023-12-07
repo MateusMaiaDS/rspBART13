@@ -255,7 +255,7 @@ rspBART <- function(x_train,
     D_test <- x_test_scale
 
     basis_size <- 1 # Change this value to the desired size of each sublist
-    D_seq <- 1:ncol(D_train)  # Replace this with the columns of D
+    D_seq <- 1:ncol(dummy_x$continuous_vars)  # Replace this with the columns of D
 
     # Creating a vector
     basis_subindex <- split(D_seq, rep(1:(length(D_seq) %/% basis_size), each = basis_size, length.out = length(D_seq)))
@@ -853,9 +853,9 @@ rspBART <- function(x_train,
                           main_effects_test = main_effects_test_list),
               data = list(x_train = x_train,
                           y_train = y_train,
-                          D_train = D_train,
+                          B_train = B_train_obj,
                           x_test = x_test,
-                          D_test = D_test,
+                          B_test = B_test_obj,
                           basis_subindex = basis_subindex)))
 
   }

@@ -13,7 +13,7 @@ n_ <- 250
 sd_ <- 1
 n_rep_ <- 10
 nIknots_ <- 2
-ntree_ <- 10
+ntree_ <- 50
 dif_order_ <- 1
 use_bs_ <- FALSE
 seed_ <- 42
