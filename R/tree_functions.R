@@ -24,7 +24,7 @@ stump <- function(data,
     parent_node = NA,
     ancestors = NA,
     terminal = TRUE,
-    betas_vec = NULL
+    betas_vec = rep(0, length(unlist(data$basis_subindex)))
   )
 
   # Returning the node
@@ -84,40 +84,38 @@ nodeLogLike <- function(curr_part_res,
   n_leaf <- length(index_node)
   d_basis <- length(j_)
   ones <- matrix(1,nrow = n_leaf)
-  # Getting the index of all covariates for each basis from each ancestors
-  D_subset_index <- unlist(data$basis_subindex[j_])
 
 
-  # Getting the p_{tell} i.e: number of betas of the current terminal node
-  d_basis <- length(D_subset_index)
-  D_leaf <- data$D_train[index_node,D_subset_index, drop = FALSE]
-
-  if(NCOL(D_leaf)==0){
+  if(length(j_)==0){
     stop(" Node Log-likelihood: No variables")
   }
 
   # Using the Andrew's approach I would have
   mean_aux <- rep(0,length(curr_part_res_leaf))
-  diag_tau_beta_inv <- diag(x = 1/unique(data$tau_beta), nrow = NCOL(D_leaf))
+  cov_aux <- matrix(0,nrow = length(index_node),ncol = length(index_node))
+  # diag_tau_beta_inv <- diag(x = 1/unique(data$tau_beta), nrow = )
 
+  for(jj in 1:length(j_)){
+      if(data$dif_order==0){
+        stop("Never")
+        # P_aux <- data$P[D_subset_index,D_subset_index]
+        # for(jj in 1:length(j_)){
+        #   P_aux[data$basis_subindex[[jj]],data$basis_subindex[[jj]]] <- data$tau_beta[jj]*data$P[data$basis_subindex[[jj]],data$basis_subindex[[jj]]]
+        # }
+          cov_aux <- diag(x = (data$tau^(-1)),nrow = n_leaf) + D_leaf%*%tcrossprod(diag_tau_beta_inv,D_leaf)
+      } else {
 
-  if(data$dif_order==0){
-    # P_aux <- data$P[D_subset_index,D_subset_index]
-    # for(jj in 1:length(j_)){
-    #   P_aux[data$basis_subindex[[jj]],data$basis_subindex[[jj]]] <- data$tau_beta[jj]*data$P[data$basis_subindex[[jj]],data$basis_subindex[[jj]]]
-    # }
-      cov_aux <- diag(x = (data$tau^(-1)),nrow = n_leaf) + D_leaf%*%tcrossprod(diag_tau_beta_inv,D_leaf)
-  } else {
-      P_aux <- data$P
-      for(jj in 1:length(j_)){
-        P_aux[data$basis_subindex[[jj]],data$basis_subindex[[jj]]] <- data$tau_beta[jj]*data$P[data$basis_subindex[[jj]],data$basis_subindex[[jj]]]
-      }
-      P_aux <- data$P[D_subset_index,D_subset_index]
-
-      cov_aux <- diag(x = (data$tau^(-1)),nrow = n_leaf) + D_leaf%*%solve(P_aux,t(D_leaf))
-
+          # Adding the quantities with respect to the interaction
+          if(j_[jj] <= length(data$dummy_x$continuousVars)){
+            cov_aux <- cov_aux + data$tau_beta[j_[jj]]*tcrossprod((tcrossprod(data$B_train[[j_[jj]]][index_node,,drop = FALSE],data$P)),
+                                                              data$B_train[[j_[jj]]][index_node,,drop = FALSE])
+          } else {
+            cov_aux <- cov_aux + data$tau_beta[j_[jj]]*tcrossprod(tcrossprod(data$B_train[[j_[jj]]][index_node,,drop = FALSE],data$P_interaction),
+                                                              data$B_train[[j_[jj]]][index_node,,drop = FALSE])
+          }
+     }
   }
-
+  cov_aux <- diag(x = (data$tau^(-1)),nrow = n_leaf) + cov_aux
 
   result <- mvnfast::dmvn(X = curr_part_res_leaf,mu = mean_aux,
                           sigma = cov_aux ,log = TRUE)
@@ -963,12 +961,16 @@ change_interaction <-  function(tree,
 # ============
 updateBetas <- function(tree,
                         curr_part_res,
-                        data,j){
+                        data){
 
 
   # Getting the terminals
   t_nodes_names <- get_terminals(tree)
 
+
+  # Getting the current prediction for that tree
+  y_hat_train <- matrix(0,nrow = nrow(data$x_train),ncol = length(tree$node0$betas_vec))
+  y_hat_test <- matrix(0,nrow = nrow(data$x_test),ncol = length(tree$node0$betas_vec))
 
   for(i in 1:length(t_nodes_names)){
 
@@ -990,38 +992,54 @@ updateBetas <- function(tree,
 
     res_leaf <- matrix(curr_part_res[cu_t$train_index], ncol=1)
 
-    # Creatinga  vector of zeros for betas_vec
-    tree[[t_nodes_names[[i]]]]$betas_vec <- rep(0,ncol(data$D_train))
 
     # Selecting the actually parameters subsetting
     leaf_basis_subindex <- unlist(data$basis_subindex[unique(node_index_var)]) # Recall to the unique() here too
-    basis_dim <- length(leaf_basis_subindex)
-    D_leaf <- data$D_train[cu_t$train_index,leaf_basis_subindex, drop = FALSE]
+    basis_dim <- NCOL(data$P)
+    basis_dim_interaction <- NCOL(data$P_interaction)
     n_leaf <- length(cu_t$train_index)
     diag_leaf <- diag(nrow = n_leaf)
     diag_basis <- diag(nrow = basis_dim)
 
 
     #  Calculating the quantities need to the posterior of \beta
-    b_ <- crossprod(D_leaf,res_leaf)
-    data_tau_beta_diag <- rep(data$tau_beta[node_index_var], NCOL(D_leaf)) # Don't really use this
-    U_ <- data$P
-    for(k in 1:length(unique(node_index_var))){
-      aux_P_indexes <- unlist(data$basis_subindex[node_index_var[k]])
-      U_[aux_P_indexes,aux_P_indexes] <- U_[aux_P_indexes,aux_P_indexes]*(data$tau_beta[node_index_var[k]])
-    }
-    U_ <- U_[leaf_basis_subindex,leaf_basis_subindex, drop = FALSE]
-    U_inv_ <- U_
-    Q_ <- (crossprod(D_leaf) + data$tau^(-1)*U_inv_)
-    Q_inv_ <- chol2inv(chol(Q_))
-    # Q_inv_ <- solve(Q_)
+    # == Starting to iterate over those coefficients ==========#
+    for(jj in 1:length(unique(node_index_var))){
 
-    # tree[[t_nodes_names[i]]]$betas_vec[leaf_basis_subindex] <- c(keefe_mvn_sampler(b = b_,Q = Q_))
-    tree[[t_nodes_names[i]]]$betas_vec[leaf_basis_subindex] <- mvnfast::rmvn(n = 1,mu = Q_inv_%*%b_,sigma = (data$tau^(-1))*Q_inv_)
+        # Getting the index for the vector of betas
+        leaf_basis_subindex <- unlist(data$basis_subindex[node_index_var[jj]]) # Recall to the unique() here too
+
+        b_ <- crossprod(B_train_obj[[node_index_var[jj]]],res_leaf)
+        data_tau_beta_diag <- rep(data$tau_beta[node_index_var], NCOL(B_train_obj[[node_index_var[jj]]])) # Don't really use this
+        if(node_index_var[jj]<=length(data$dummy_x$continuousVars)){
+          U_ <- data$P*data$tau_beta[node_index_var[jj]]
+        } else {
+          U_ <- data$P_interaction*data$tau_beta[node_index_var[jj]]
+        }
+
+        Q_ <- (crossprod(B_train_obj[[node_index_var[jj]]]) + data$tau^(-1)*U_)
+        Q_inv_ <- chol2inv(chol(Q_))
+        # Q_inv_ <- solve(Q_)
+
+        # Storing the old betas
+        old_betas <- matrix(tree[[t_nodes_names[i]]]$betas_vec[leaf_basis_subindex],nrow = 1)
+        # See that I also creating a vector with the new betas
+        tree[[t_nodes_names[i]]]$betas_vec[leaf_basis_subindex] <-  new_betas <- mvnfast::rmvn(n = 1,mu = Q_inv_%*%b_,sigma = (data$tau^(-1))*Q_inv_)
+        new_betas <- matrix(new_betas,nrow = 1)
+        # Updating the residuals
+        new_partial_pred <- tcrossprod(B_train_obj[[node_index_var[jj]]],new_betas)
+        curr_part_res[cu_t$train_index] <- curr_part_res[cu_t$train_index] - tcrossprod(B_train_obj[[node_index_var[jj]]],old_betas) + new_partial_pred
+
+        y_hat_train[cu_t$train_index,node_index_var[jj]] <- new_partial_pred
+        y_hat_test[cu_t$test_index,node_index_var[jj]] <- tcrossprod(B_test_obj[[node_index_var[jj]]],new_betas)
+    }
+
   }
 
   # Returning the tree
-  return(tree)
+  return(list(tree = tree,
+              y_hat_train = y_hat_train,
+              y_hat_test = y_hat_test))
 
 }
 
@@ -1092,14 +1110,18 @@ update_tau_betas_j <- function(forest,
 
 
             # Getting ht leaf basis
-            for(kk in 1: length(var_)){
+            for(kk in 1:length(var_)){
               leaf_basis_subindex <- unlist(data$basis_subindex[var_[kk]]) # Recall to the unique() function here
               p_ <- length(leaf_basis_subindex)
               betas_mat_ <- matrix(cu_t$betas_vec[leaf_basis_subindex],nrow = p_)
-
               tau_b_shape[var_[kk]] <- tau_b_shape[var_[kk]] + p_
-              tau_b_rate[var_[kk]] <- tau_b_rate[var_[kk]] + c(crossprod(betas_mat_,crossprod(data$P[leaf_basis_subindex,leaf_basis_subindex, drop = FALSE],betas_mat_)))
 
+              if(var_[kk] <= NCOL(data$x_train)){
+                  tau_b_rate[var_[kk]] <- tau_b_rate[var_[kk]] + c(crossprod(betas_mat_,crossprod(data$P,betas_mat_)))
+              } else {
+                tau_b_rate[var_[kk]] <- tau_b_rate[var_[kk]] + c(crossprod(betas_mat_,crossprod(data$P_interaction,betas_mat_)))
+
+              }
             }
       # }
 

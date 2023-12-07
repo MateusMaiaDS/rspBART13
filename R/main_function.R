@@ -153,6 +153,23 @@ rspBART <- function(x_train,
     }
   }
 
+  # Setting the indexes for the betas
+  D_seq <- 1:(basis_size*length(dummy_x$continuousVars))  # Replace this with the columns of D
+
+  # Creating a vector
+  basis_subindex_main <- split(D_seq, rep(1:((length(D_seq) %/% basis_size)), each = basis_size, length.out = length(D_seq)))
+
+  # Getting the interactions subindex only
+  if(interaction_term){
+    interaction_list <- combn(1:NCOL(x_train),2,simplify = TRUE)
+  }
+
+  D_int_seq <- (length(D_seq)+1):(basis_size*length(dummy_x$continuousVars)+(basis_size^2)*NCOL(interaction_list))
+  interactions_subindex <- split(D_int_seq, rep(1:((length(D_int_seq) %/% basis_size)), each = basis_size^2, length.out = length(D_int_seq)))
+
+  # Getting the final basis subindex
+  basis_subindex <- append(basis_subindex_main,interactions_subindex)
+
 
 
   # Creating the natural B-spline for each predictor
@@ -216,8 +233,14 @@ rspBART <- function(x_train,
     interaction_names <- concatenate_columns(interaction_list)
   }
 
-  names(B_train_obj) <- names(B_test_obj) <- c(main_effects_names,interaction_names)
 
+  # Renaming only the interactions
+  if(interaction_term){
+    names(basis_subindex)[(length(dummy_x$continuousVars)+1):length(basis_subindex)] <- concatenate_columns(interaction_list)
+  }
+
+  # And the main effects
+  names(B_train_obj) <- names(B_test_obj) <- c(main_effects_names,interaction_names)
 
 
   if(motrbart_bool){
@@ -257,9 +280,7 @@ rspBART <- function(x_train,
     y_scale <- normalize_bart(y = y_train,a = min_y,b = max_y)
 
     # New update
-    m_tilda <- mean(diag(tcrossprod(D_train)))
-    # Maybe need to change that in the future
-
+    # Maybe need to change that in the future ( THINK ABOUT USING M_TILDA)
     tau_mu <- 4*n_tree*(kappa^2)
     # tau_mu <- 4*n_tree*(kappa^2)*(m_tilda)*(nIknots-1)
     # tau_mu <- 4*n_tree*(kappa^2)*(m_tilda)
@@ -271,10 +292,10 @@ rspBART <- function(x_train,
     y_scale <- y_train
 
     # New parameter update
-    m_tilda <- mean(diag(tcrossprod(D_train)))
+    # m_tilda <- mean(diag(tcrossprod(D_train)))
     tau_mu <- (4*n_tree*(kappa^2))/((max_y-min_y)^2)
     # tau_mu <- (4*n_tree*(kappa^2)*(m_tilda)*(nIknots-1))/((max_y-min_y)^2)
-    tau_mu <- (4*n_tree*(kappa^2)*(m_tilda))/((max_y-min_y)^2)
+    # tau_mu <- (4*n_tree*(kappa^2)*(m_tilda))/((max_y-min_y)^2)
     # tau_mu <- (4*n_tree*(kappa^2))/((max_y-min_y)^2)
 
   }
@@ -444,51 +465,21 @@ rspBART <- function(x_train,
 
   # Creating the penalty matrix for the interaction
   if(interaction_term){
-    P_interaction <-  kronecker(all_P[[interaction_list[1,1]]],all_P[[interaction_list[2,1]]])
+    P_interaction <-  kronecker(P_train_main,P_train_main)
   } else {
     P_interaction <- NULL
   }
-
-  if(interaction_term){
-    # Adding the penalty term for the interactions
-    all_P_aux <- vector('list',NCOL(interaction_list))
-    for( ii in 1:NCOL(interaction_list)){
-      if(dif_order!=0){
-        all_P_aux[[ii]] <- kronecker(all_P[[interaction_list[1,ii]]],all_P[[interaction_list[2,ii]]])
-      } else {
-        all_P_aux[[ii]] <- diag(nrow = NCOL(all_P[[1]])^2)
-      }
-        # all_P_aux <- append(all_P_aux,all_P_aux)
-    }
-
-    # all_P <- append(all_P,all_P_aux)
-  } else {
-    all_P_aux <- NULL
-  }
-
-  all_P_joint <- vector('list',length = length(all_P_aux)+length(all_P))
-
-  all_P_joint[1:length(all_P)] <- all_P
-  all_P_joint[(length(all_P)+1):length(basis_subindex)] <- all_P_aux
-
-  P_train <- as.matrix(Matrix::bdiag(all_P_joint))
-
-  # Adjusting D_train
-  # D_train <- do.call(cbind,replicate(NCOL(x_train_scale),D_train,simplify = FALSE))
-  # D_test <- do.call(cbind,replicate(NCOL(x_train_scale),D_test,simplify = FALSE))
-
 
   #most of the functions
   data <- list(x_train = x_train_scale,
                x_test = x_test_scale,
                y_train = y_scale,
                xcut_m = xcut_m,
-               D_train = D_train,
-               D_test = D_test,
+               B_train = B_train_obj,
+               B_test = B_test_obj,
                dif_order = dif_order,
                alpha = alpha,
                beta = beta,
-               basis_subindex = basis_subindex,
                all_var_splits = all_var_splits,
                n_tree = n_tree,
                tau_mu = tau_mu,
@@ -496,15 +487,17 @@ rspBART <- function(x_train,
                a_tau = a_tau,
                d_tau = d_tau,
                tau_beta = tau_beta,
-               # delta = delta,
-               P = P_train,
+               basis_subindex = basis_subindex,
+               P = P_train_main,
+               P_interaction  = P_interaction,
                node_min_size = node_min_size,
                all_var = all_var,
                stump = stump,
                a_tau_beta_j = a_tau_beta_j,
                d_tau_beta_j = d_tau_beta_j,
                interaction_term = interaction_term,
-               interaction_list = interaction_list)
+               interaction_list = interaction_list,
+               dummy_x = dummy_x)
 
   #   So to simply interepret the element all_var_splits each element correspond
   #to each variable. Afterwards each element corresponds to a cutpoint; Finally,
@@ -568,9 +561,9 @@ rspBART <- function(x_train,
       # }
 
       # Checking the trees variables
-      lapply(forest,function(x){x$node0$j}) %>% unlist%>% table()
+      # lapply(forest,function(x){x$node0$j}) %>% unlist%>% table()
 
-      forest[[1]] %>% lapply(function(x) x$inter) %>% unlist()
+      # forest[[1]] %>% lapply(function(x) x$inter) %>% unlist()
       # # Forcing to grow when only have a stump
       # if(length(forest[[t]])==1){
       #   if(!data$all_var){
@@ -619,17 +612,19 @@ rspBART <- function(x_train,
       # cat("Forest verb:", verb,"\n")
 
       # Updating the betas
-      forest[[t]] <- updateBetas(tree = forest[[t]],
-                                 curr_part_res = partial_residuals,
-                                 data = data)
+      update_betas_aux <- updateBetas(tree = forest[[t]],
+                                curr_part_res = partial_residuals,
+                                data = data)
+
+      forest[[t]] <- update_betas_aux$tree
 
       # Getting the predictions
-      tree_predictions <- getPredictions(tree = forest[[t]],
-                                         data = data)
+      # tree_predictions <- getPredictions(tree = forest[[t]],
+      #                                    data = data)
 
-      trees_fit[t,] <- rowSums(tree_predictions$y_train_hat)
-      trees_fit_test[t,] <- rowSums(tree_predictions$y_hat_test)
-      partial_train_fits[[t]] <- tree_predictions$y_train_hat
+      trees_fit[t,] <- rowSums(update_betas_aux$y_hat_train)
+      trees_fit_test[t,] <- rowSums(update_betas_aux$y_hat_test)
+      partial_train_fits[[t]] <- update_betas_aux$y_hat_train
 
       # ==========================
       # Running the plot functions
@@ -638,28 +633,25 @@ rspBART <- function(x_train,
       if(plot_preview){
         choose_dimension <- 1
         if(t==1){
-          plot(x_train_scale[,choose_dimension],tree_predictions$y_train_hat[,choose_dimension], pch = 20, main = paste0("X",choose_dimension," partial pred"),ylim = range(y_scale),
+          plot(x_train_scale[,choose_dimension],update_betas_aux$y_train_hat[,choose_dimension], pch = 20, main = paste0("X",choose_dimension," partial pred"),ylim = range(y_scale),
                col = ggplot2::alpha("black",0.2))
         } else {
-          points(x_train_scale[,choose_dimension],tree_predictions$y_train_hat[,choose_dimension], pch=20, col = ggplot2::alpha(t,0.2))
+          points(x_train_scale[,choose_dimension],update_betas_aux$y_train_hat[,choose_dimension], pch=20, col = ggplot2::alpha(t,0.2))
         }
       }
 
-      if(plot_preview){
-        points(x_train_scale[,choose_dimension],x1_pred, pch=20, col = "blue")
-        # plot(10*(sin(x_train_scale[,1]*x_train_scale[,2])),tree_predictions$y_hat_test[,11], pch=20, col = "blue")
-        x1_pred <- numeric(nrow(x_train))
-      }
+      # if(plot_preview){
+      #   points(x_train_scale[,choose_dimension],x1_pred, pch=20, col = "blue")
+      #   # plot(10*(sin(x_train_scale[,1]*x_train_scale[,2])),update_betas_aux$y_hat_test[,11], pch=20, col = "blue")
+      #   x1_pred <- numeric(nrow(x_train))
+      # }
 
-      trees_fit[t,] <- rowSums(tree_predictions$y_train_hat)
-      trees_fit_test[t,] <- rowSums(tree_predictions$y_hat_test)
-      partial_train_fits[[t]] <- tree_predictions$y_train_hat
 
       # Adding up the contribution for each tree with respect to the covariate (i)
       if(main_effects_pred){
         for(ii in 1:length(main_effects_train_list)){
-          main_effects_train_list[[ii]][i,] <- main_effects_train_list[[ii]][i,] + tree_predictions$y_train_hat[,ii]
-          main_effects_test_list[[ii]][i,] <- main_effects_test_list[[ii]][i,] + tree_predictions$y_hat_test[,ii]
+          main_effects_train_list[[ii]][i,] <- main_effects_train_list[[ii]][i,] + update_betas_aux$y_hat_train[,ii]
+          main_effects_test_list[[ii]][i,] <- main_effects_test_list[[ii]][i,] + update_betas_aux$y_hat_test[,ii]
         }
       }
     }
@@ -676,23 +668,25 @@ rspBART <- function(x_train,
       }
 
     }
+
     # Getting final predcition
     y_hat <- colSums(trees_fit)
     y_hat_test <- colSums(trees_fit_test)
 
 
     # Seeing the results for the unidimensional cases.
-    if(plot_preview){
-        plot(x_train_scale,y_scale)
-        for(plot_i in 1:n_tree){
-          points(x_train_scale,trees_fit[plot_i,],pch=20,col = ggplot2::alpha(plot_i,0.2))
-        }
-        points(x_train_scale,y_hat,col = "blue",pch=20)
+    if(NCOL(data$x_train)==1){
+          if(plot_preview){
+              plot(x_train_scale,y_scale)
+              for(plot_i in 1:n_tree){
+                points(x_train_scale,trees_fit[plot_i,],pch=20,col = ggplot2::alpha(plot_i,0.2))
+              }
+              points(x_train_scale,y_hat,col = "blue",pch=20)
+          }
     }
 
-
     # Updating all other parameters
-    if(update_tau_beta ){
+    if(update_tau_beta){
       data$tau_beta <- update_tau_betas_j(forest = forest,data = data)
     }
 
