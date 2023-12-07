@@ -990,9 +990,6 @@ updateBetas <- function(tree,
     # The lines above are summarised here
     node_index_var <- cu_t$pred_vars
 
-    res_leaf <- matrix(curr_part_res[cu_t$train_index], ncol=1)
-
-
     # Selecting the actually parameters subsetting
     leaf_basis_subindex <- unlist(data$basis_subindex[unique(node_index_var)]) # Recall to the unique() here too
     basis_dim <- NCOL(data$P)
@@ -1005,6 +1002,10 @@ updateBetas <- function(tree,
     #  Calculating the quantities need to the posterior of \beta
     # == Starting to iterate over those coefficients ==========#
     for(jj in 1:length(unique(node_index_var))){
+
+
+        # RES_LEAF also need to updated here from the new_curr_part_res
+        res_leaf <- matrix(curr_part_res[cu_t$train_index], ncol=1)
 
         # Getting the index for the vector of betas
         leaf_basis_subindex <- unlist(data$basis_subindex[node_index_var[jj]]) # Recall to the unique() here too
