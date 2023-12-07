@@ -1009,15 +1009,15 @@ updateBetas <- function(tree,
         # Getting the index for the vector of betas
         leaf_basis_subindex <- unlist(data$basis_subindex[node_index_var[jj]]) # Recall to the unique() here too
 
-        b_ <- crossprod(B_train_obj[[node_index_var[jj]]][cu_t$train_index,,drop=FALSE],res_leaf)
-        data_tau_beta_diag <- rep(data$tau_beta[node_index_var], NCOL(B_train_obj[[node_index_var[jj]]])) # Don't really use this
+        b_ <- crossprod(data$B_train[[node_index_var[jj]]][cu_t$train_index,,drop=FALSE],res_leaf)
+        data_tau_beta_diag <- rep(data$tau_beta[node_index_var], NCOL(data$B_train[[node_index_var[jj]]])) # Don't really use this
         if(node_index_var[jj]<=length(data$dummy_x$continuousVars)){
           U_ <- data$P*data$tau_beta[node_index_var[jj]]
         } else {
           U_ <- data$P_interaction*data$tau_beta[node_index_var[jj]]
         }
 
-        Q_ <- (crossprod(B_train_obj[[node_index_var[jj]]]) + data$tau^(-1)*U_)
+        Q_ <- (crossprod(data$B_train[[node_index_var[jj]]]) + data$tau^(-1)*U_)
         Q_inv_ <- chol2inv(chol(Q_))
         # Q_inv_ <- solve(Q_)
 
@@ -1027,8 +1027,8 @@ updateBetas <- function(tree,
         tree[[t_nodes_names[i]]]$betas_vec[leaf_basis_subindex] <-  new_betas <- mvnfast::rmvn(n = 1,mu = Q_inv_%*%b_,sigma = (data$tau^(-1))*Q_inv_)
         new_betas <- matrix(new_betas,nrow = 1)
         # Updating the residuals
-        new_partial_pred <- tcrossprod(B_train_obj[[node_index_var[jj]]][cu_t$train_index,,drop=FALSE],new_betas)
-        curr_part_res[cu_t$train_index] <- curr_part_res[cu_t$train_index] - tcrossprod(B_train_obj[[node_index_var[jj]]][cu_t$train_index,,drop=FALSE],old_betas) + new_partial_pred
+        new_partial_pred <- tcrossprod(data$B_train[[node_index_var[jj]]][cu_t$train_index,,drop=FALSE],new_betas)
+        curr_part_res[cu_t$train_index] <- curr_part_res[cu_t$train_index] - tcrossprod(data$B_train[[node_index_var[jj]]][cu_t$train_index,,drop=FALSE],old_betas) + new_partial_pred
 
         y_hat_train[cu_t$train_index,node_index_var[jj]] <- new_partial_pred
         y_hat_test[cu_t$test_index,node_index_var[jj]] <- tcrossprod(B_test_obj[[node_index_var[jj]]][cu_t$test_index,,drop=FALSE],new_betas)

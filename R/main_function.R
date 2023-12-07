@@ -238,10 +238,12 @@ rspBART <- function(x_train,
   # Renaming only the interactions
   if(interaction_term){
     names(basis_subindex)[(length(dummy_x$continuousVars)+1):length(basis_subindex)] <- concatenate_columns(interaction_list)
+    names(B_train_obj) <- names(B_test_obj) <- c(main_effects_names,interaction_names)
+  } else {
+    names(B_train_obj) <- names(B_test_obj) <- main_effects_names
   }
 
   # And the main effects
-  names(B_train_obj) <- names(B_test_obj) <- c(main_effects_names,interaction_names)
 
 
   if(motrbart_bool){
@@ -581,33 +583,35 @@ rspBART <- function(x_train,
 
       # Sampling a verb
       if(verb == "grow"){
-        if(stats::runif(n = 1)<0.5){
+        if((stats::runif(n = 1)<0.5) & (interaction_term) ){
+          forest[[t]] <- add_interaction(tree = forest[[t]],
+                                         curr_part_res = partial_residuals,
+                                         data = data)
+        } else {
           forest[[t]] <- grow(tree = forest[[t]],
                               curr_part_res = partial_residuals,
                               data = data)
-        } else {
-          forest[[t]] <- add_interaction(tree = forest[[t]],
-                              curr_part_res = partial_residuals,
-                              data = data)
+
         }
       } else if (verb == "prune"){
 
-        if(stats::runif(n = 1)<0.5){
-          forest[[t]] <- prune(tree = forest[[t]],
-                               curr_part_res = partial_residuals,
-                               data = data)
-        } else {
+        if((stats::runif(n = 1)<0.5) & (interaction_term)){
+
           forest[[t]] <- prune_interaction(tree = forest[[t]],
+                                           curr_part_res = partial_residuals,
+                                           data = data)
+        } else {
+          forest[[t]] <- prune(tree = forest[[t]],
                                curr_part_res = partial_residuals,
                                data = data)
         }
       } else if (verb == "change"){
-        if(stats::runif(n = 1)<0.5){
-          forest[[t]] <- change(tree = forest[[t]],
-                                curr_part_res = partial_residuals,
-                                data = data)
-        } else {
+        if((stats::runif(n = 1)<0.5) & (interaction_term)){
           forest[[t]] <- change_interaction(tree = forest[[t]],
+                                            curr_part_res = partial_residuals,
+                                            data = data)
+        } else {
+          forest[[t]] <- change(tree = forest[[t]],
                                 curr_part_res = partial_residuals,
                                 data = data)
         }

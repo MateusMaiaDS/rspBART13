@@ -63,7 +63,7 @@ main_effects_pred <- TRUE
 # interaction_list_ <- interaction_list <- list(c(1,2))
 interaction_list <- NULL
 store_tree_fit <- FALSE
-interaction_term <- TRUE
+interaction_term <- FALSE
 cv_object_ <- kfold(data_ = sim_train,nfold_ = 10,seed_ = 42)
 fold_ <- 1
 cv_object_fold_ <- cv_object_[[fold_]]
