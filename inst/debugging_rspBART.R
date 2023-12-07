@@ -50,7 +50,7 @@ usequants = TRUE
 delta <- 1
 
 # Splines parameters
-nIknots = 5
+nIknots = 2
 dif_order = 1
 motrbart_bool <- FALSE
 use_bs <- FALSE
@@ -62,7 +62,7 @@ update_tau_beta <- TRUE
 main_effects_pred <- TRUE
 # interaction_list_ <- interaction_list <- list(c(1,2))
 interaction_list <- NULL
-
+store_tree_fit <- FALSE
 interaction_term <- TRUE
 cv_object_ <- kfold(data_ = sim_train,nfold_ = 10,seed_ = 42)
 fold_ <- 1

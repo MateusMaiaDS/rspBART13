@@ -36,7 +36,8 @@ rspBART <- function(x_train,
                     update_tau_beta = FALSE,
                     main_effects_pred = FALSE,
                     interaction_term =  FALSE,
-                    interaction_list = NULL
+                    interaction_list = NULL,
+                    store_tree_fit = FALSE
 ) {
 
 
@@ -376,8 +377,10 @@ rspBART <- function(x_train,
   forest <- vector("list",n_tree)
 
   # Partial component pieces
-  partial_train_fits <- vector("list", n_tree)
-
+  # (OPTIONAL)
+  if(store_tree_fit){
+    partial_train_fits <- vector("list", n_tree)
+  }
   proposal_outcomes <- setNames(data.frame(matrix(nrow = 0, ncol = 6)),
                                 c("tree_number" , "proposal", "status","mcmc_iter", "new_tree_loglike", "old_tree_loglike"))
   all_train_indexes <- data.frame(matrix(data = NA,nrow = nrow(xcut_m),ncol = ncol(xcut_m)))
@@ -533,8 +536,10 @@ rspBART <- function(x_train,
   for(i in 1:n_mcmc){
 
     # Initialising the partial train tree fits
-    partial_train_fits[[i]] <- vector("list",data$n_tree)
-    names(partial_train_fits[[i]]) <- paste0("tree",1:data$n_tree)
+    if(store_tree_fit){
+      partial_train_fits[[i]] <- vector("list",data$n_tree)
+      names(partial_train_fits[[i]]) <- paste0("tree",1:data$n_tree)
+    }
 
     # Initialising orogress bar
     progress <- i / n_mcmc * 100
@@ -624,8 +629,9 @@ rspBART <- function(x_train,
 
       trees_fit[t,] <- rowSums(update_betas_aux$y_hat_train)
       trees_fit_test[t,] <- rowSums(update_betas_aux$y_hat_test)
-      partial_train_fits[[t]] <- update_betas_aux$y_hat_train
-
+      if(store_tree_fit){
+        partial_train_fits[[t]] <- update_betas_aux$y_hat_train
+      }
       # ==========================
       # Running the plot functions
       # ==========================
@@ -700,10 +706,13 @@ rspBART <- function(x_train,
                            data = data)
 
 
-    # Storing all predictions
-    all_trees[[i]] <- forest
+    # Storing all predictions and (TREES depending on the boolean)
+    if(store_tree_fit){
+      all_trees[[i]] <- forest
+      all_trees_fit[[i]] <- partial_train_fits
+    }
+
     all_tau[[i]] <- data$tau
-    all_trees_fit[[i]] <- partial_train_fits
     all_y_hat[i,] <- y_hat
     all_y_hat_test[i,] <- y_hat_test
     all_tau_beta[i,] <- data$tau_beta
@@ -733,7 +742,10 @@ rspBART <- function(x_train,
     all_tau_beta_norm <- matrix(NA,nrow = n_mcmc,ncol = NCOL(x_train_scale))
   }
 
-  all_trees_fit_norm <- vector("list",n_mcmc)
+  if(store_tree_fit){
+    all_trees_fit_norm <- vector("list",n_mcmc)
+  }
+
   all_y_hat_norm <- matrix(NA,nrow = nrow(all_y_hat),ncol = ncol(all_y_hat))
   all_y_hat_test_norm <- matrix(NA,nrow = nrow(all_y_hat_test),ncol = ncol(all_y_hat_test))
 
@@ -749,8 +761,11 @@ rspBART <- function(x_train,
       # FIX THIS LATER
       # ==============
 
-      for(tree_number in 1:n_tree){
-        all_trees_fit_norm[[post_iter]][[tree_number]] <- unnormalize_bart(z = all_trees_fit[[post_iter]][[tree_number]],a = min_y,b = max_y)
+
+      if(store_tree_fit){
+        for(tree_number in 1:n_tree){
+          all_trees_fit_norm[[post_iter]][[tree_number]] <- unnormalize_bart(z = all_trees_fit[[post_iter]][[tree_number]],a = min_y,b = max_y)
+        }
       }
       all_y_hat_norm[post_iter,] <- unnormalize_bart(z = all_y_hat[post_iter,],a = min_y,b = max_y)
       all_y_hat_test_norm[post_iter, ] <- unnormalize_bart(z = all_y_hat_test[post_iter,],a = min_y,b = max_y)
