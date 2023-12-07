@@ -1032,7 +1032,7 @@ updateBetas <- function(tree,
         curr_part_res[cu_t$train_index] <- curr_part_res[cu_t$train_index] - tcrossprod(data$B_train[[node_index_var[jj]]][cu_t$train_index,,drop=FALSE],old_betas) + new_partial_pred
 
         y_hat_train[cu_t$train_index,node_index_var[jj]] <- new_partial_pred
-        y_hat_test[cu_t$test_index,node_index_var[jj]] <- tcrossprod(B_test_obj[[node_index_var[jj]]][cu_t$test_index,,drop=FALSE],new_betas)
+        y_hat_test[cu_t$test_index,node_index_var[jj]] <- tcrossprod(data$B_test[[node_index_var[jj]]][cu_t$test_index,,drop=FALSE],new_betas)
     }
 
   }

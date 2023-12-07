@@ -443,8 +443,10 @@ all_bart_lite_interaction <- function(cv_element,
 
 
   if(!interaction_term_){
-    stop("Do not run this if you dont want interactions")
+    warning("Do not run this if you dont want interactions")
   }
+
+
   # Doing a warming for the case whichI don't have
   # if(ntree_<50){
   #   stop("Use the all_bart() function instead.")
