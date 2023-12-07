@@ -180,16 +180,16 @@ rspBART <- function(x_train,
     # Modify the basis only with respect to the main effects at the moment
     if(use_bs){
       B_train_obj[[i]] <- splines::bs(x = x_train_scale[,dummy_x$continuousVars[i], drop = FALSE],
-                                 df = nIknots+3,
-                                 degree = 3,intercept = FALSE,
-                                 Boundary.knots = c(-2,2)*range(x_train_scale[,dummy_x$continuousVars[i]]))
+                                      df = nIknots+3,
+                                      degree = 3,intercept = FALSE,
+                                      Boundary.knots = c(-2,2)*range(x_train_scale[,dummy_x$continuousVars[i]]))
 
       B_train_obj[[i]] <- splines::bs(x = x_train_scale[,dummy_x$continuousVars[i], drop = FALSE])
     } else {
       B_train_obj[[i]] <- splines::spline.des(x = x_train_scale[,dummy_x$continuousVars[i], drop = FALSE],
-                                         knots = new_knots[,dummy_x$continuousVars[i]],
-                                         ord = ord_,
-                                         derivs = 0*x_train_scale[,dummy_x$continuousVars[i], drop = FALSE],outer.ok = TRUE)$design
+                                              knots = new_knots[,dummy_x$continuousVars[i]],
+                                              ord = ord_,
+                                              derivs = 0*x_train_scale[,dummy_x$continuousVars[i], drop = FALSE],outer.ok = TRUE)$design
     }
 
 
@@ -199,9 +199,9 @@ rspBART <- function(x_train,
       B_test_obj[[i]] <- predict(object = B_train_obj[[i]],newx = x_test_scale[,dummy_x$continuousVars[i], drop = FALSE])
     } else {
       B_test_obj[[i]] <- splines::spline.des(x = x_test_scale[,dummy_x$continuousVars[i], drop = FALSE],
-                                        knots = new_knots[,dummy_x$continuousVars[i]],
-                                        ord = ord_,
-                                        derivs = 0*x_test_scale[,dummy_x$continuousVars[i], drop = FALSE],outer.ok = TRUE)$design
+                                             knots = new_knots[,dummy_x$continuousVars[i]],
+                                             ord = ord_,
+                                             derivs = 0*x_test_scale[,dummy_x$continuousVars[i], drop = FALSE],outer.ok = TRUE)$design
     }
 
 
@@ -255,7 +255,7 @@ rspBART <- function(x_train,
     D_test <- x_test_scale
 
     basis_size <- 1 # Change this value to the desired size of each sublist
-    D_seq <- 1:ncol(dummy_x$continuous_vars)  # Replace this with the columns of D
+    D_seq <- 1:ncol(D_train)  # Replace this with the columns of D
 
     # Creating a vector
     basis_subindex <- split(D_seq, rep(1:(length(D_seq) %/% basis_size), each = basis_size, length.out = length(D_seq)))
@@ -390,36 +390,36 @@ rspBART <- function(x_train,
   # Creating a list to store all the main effects for the sum of trees
   if(main_effects_pred){
 
-      # Calculating the main effects
-      if(interaction_term){
+    # Calculating the main effects
+    if(interaction_term){
 
-        # Interacting
-        main_effects_train_list <- main_effects_test_list <- vector("list", length = length(dummy_x$continuousVars)+NCOL(interaction_list))
+      # Interacting
+      main_effects_train_list <- main_effects_test_list <- vector("list", length = length(dummy_x$continuousVars)+NCOL(interaction_list))
 
-        for(list_size in 1:length(main_effects_train_list)){
-          main_effects_train_list[[list_size]] <- matrix(0,nrow = n_mcmc,ncol = nrow(x_train))
-          main_effects_test_list[[list_size]] <- matrix(0,nrow = n_mcmc,ncol = nrow(x_test))
-        }
-
-        # Renaming the main list
-        if(interaction_term){
-          internames_ <- apply(interaction_list,2,function(vars_){paste0("x",paste0(vars_,collapse = ":"))})
-          names(main_effects_train_list) <- names(main_effects_test_list) <- c(dummy_x$continuousVars, internames_)
-        } else {
-          names(main_effects_train_list) <- names(main_effects_test_list) <-dummy_x$continuousVars
-        }
-
-
-      } else { # In case there are no interactions
-        main_effects_train_list <- main_effects_test_list <- vector("list", length = length(dummy_x$continuousVars))
-
-        for(list_size in 1:length(dummy_x$continuousVars)){
-          main_effects_train_list[[list_size]] <- matrix(0,nrow = n_mcmc,ncol = nrow(x_train))
-          main_effects_test_list[[list_size]] <- matrix(0,nrow = n_mcmc,ncol = nrow(x_test))
-        }
-
-        names(main_effects_train_list) <- names(main_effects_test_list) <- dummy_x$continuousVars
+      for(list_size in 1:length(main_effects_train_list)){
+        main_effects_train_list[[list_size]] <- matrix(0,nrow = n_mcmc,ncol = nrow(x_train))
+        main_effects_test_list[[list_size]] <- matrix(0,nrow = n_mcmc,ncol = nrow(x_test))
       }
+
+      # Renaming the main list
+      if(interaction_term){
+        internames_ <- apply(interaction_list,2,function(vars_){paste0("x",paste0(vars_,collapse = ":"))})
+        names(main_effects_train_list) <- names(main_effects_test_list) <- c(dummy_x$continuousVars, internames_)
+      } else {
+        names(main_effects_train_list) <- names(main_effects_test_list) <-dummy_x$continuousVars
+      }
+
+
+    } else { # In case there are no interactions
+      main_effects_train_list <- main_effects_test_list <- vector("list", length = length(dummy_x$continuousVars))
+
+      for(list_size in 1:length(dummy_x$continuousVars)){
+        main_effects_train_list[[list_size]] <- matrix(0,nrow = n_mcmc,ncol = nrow(x_train))
+        main_effects_test_list[[list_size]] <- matrix(0,nrow = n_mcmc,ncol = nrow(x_test))
+      }
+
+      names(main_effects_train_list) <- names(main_effects_test_list) <- dummy_x$continuousVars
+    }
   } else {
     main_effects_train_list <- main_effects_test_list <- NULL
   }
@@ -526,12 +526,12 @@ rspBART <- function(x_train,
 
   # For cases where the tree is greater than one;
   if(scale_init){
-      if(n_tree>1){
-        # Initial prediction
-        for(i in 1:n_tree){
-          trees_fit[i,] <- y_scale/n_tree
-        }
+    if(n_tree>1){
+      # Initial prediction
+      for(i in 1:n_tree){
+        trees_fit[i,] <- y_scale/n_tree
       }
+    }
   }
 
   # Initialsing the loop
@@ -622,8 +622,8 @@ rspBART <- function(x_train,
 
       # Updating the betas
       update_betas_aux <- updateBetas(tree = forest[[t]],
-                                curr_part_res = partial_residuals,
-                                data = data)
+                                      curr_part_res = partial_residuals,
+                                      data = data,trees_fit = trees_fit,j = t)
 
       forest[[t]] <- update_betas_aux$tree
 
@@ -669,12 +669,12 @@ rspBART <- function(x_train,
     # Visualizing some plots
     if(plot_preview){
       if(interaction_term){
-          par(mfrow = c(2,floor(NCOL(data$x_train)/2)))
-          for(jj in 1:NCOL(data$x_train)){
+        par(mfrow = c(2,floor(NCOL(data$x_train)/2)))
+        for(jj in 1:NCOL(data$x_train)){
           plot(x_train[,jj],colMeans(main_effects_train_list[[jj]][1:i,, drop = FALSE]),main = paste0('X',jj),
                ylab = paste0('G(X',jj,')'))
-          }
-          par(mfrow = c(1,1))
+        }
+        par(mfrow = c(1,1))
       }
 
     }
@@ -686,13 +686,13 @@ rspBART <- function(x_train,
 
     # Seeing the results for the unidimensional cases.
     if(NCOL(data$x_train)==1){
-          if(plot_preview){
-              plot(x_train_scale,y_scale)
-              for(plot_i in 1:n_tree){
-                points(x_train_scale,trees_fit[plot_i,],pch=20,col = ggplot2::alpha(plot_i,0.2))
-              }
-              points(x_train_scale,y_hat,col = "blue",pch=20)
-          }
+      if(plot_preview){
+        plot(x_train_scale,y_scale)
+        for(plot_i in 1:n_tree){
+          points(x_train_scale,trees_fit[plot_i,],pch=20,col = ggplot2::alpha(plot_i,0.2))
+        }
+        points(x_train_scale,y_hat,col = "blue",pch=20)
+      }
     }
 
     # Updating all other parameters
@@ -737,7 +737,7 @@ rspBART <- function(x_train,
   }
 
 
-   # Normalising elements
+  # Normalising elements
   all_tau_norm <- numeric(n_mcmc)
 
   if(interaction_term){
@@ -853,12 +853,12 @@ rspBART <- function(x_train,
                           main_effects_test = main_effects_test_list),
               data = list(x_train = x_train,
                           y_train = y_train,
-                          B_train = B_train_obj,
+                          D_train = D_train,
                           x_test = x_test,
-                          B_test = B_test_obj,
+                          D_test = D_test,
                           basis_subindex = basis_subindex)))
 
-  }
+}
 
 
 
