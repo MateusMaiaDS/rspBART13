@@ -14,6 +14,10 @@ sd_ <- 1
 sim_train <- mlbench.friedman1(n = n_,sd = sd_)  |> as.data.frame()
 sim_test <- mlbench.friedman1(n = n_,sd = sd_)  |> as.data.frame()
 
+sim_train <- break.mlbench.friedman1(n = n_,sd = sd_)  |> as.data.frame()
+sim_test <- break.mlbench.friedman1(n = n_,sd = sd_)  |> as.data.frame()
+
+
 # sim_train <- mlbench.d1.break(n = n_,sd = 1)  |> as.data.frame()
 # sim_test <- mlbench.d1.break(n = n_,sd = 1) |> as.data.frame()
 
@@ -63,7 +67,7 @@ main_effects_pred <- TRUE
 # interaction_list_ <- interaction_list <- list(c(1,2))
 interaction_list <- NULL
 store_tree_fit <- FALSE
-interaction_term <- FALSE
+interaction_term <- TRUE
 cv_object_ <- kfold(data_ = sim_train,nfold_ = 10,seed_ = 42)
 fold_ <- 1
 cv_object_fold_ <- cv_object_[[fold_]]

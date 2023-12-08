@@ -118,6 +118,13 @@ unnormalize_bart <- function(z, a, b) {
   return(y)
 }
 
+unnormalize_bart_me <- function(z, a, b) {
+  # Just getting back to the regular BART
+  y <- (b - a) * (z + 0.5)
+  return(y)
+}
+
+
 
 # Naive sigma_estimation
 naive_sigma <- function(x,y){

@@ -394,34 +394,34 @@ rspBART <- function(x_train,
     if(interaction_term){
 
       # Interacting
-      main_effects_train_list <- main_effects_test_list <- vector("list", length = length(dummy_x$continuousVars)+NCOL(interaction_list))
+      main_effects_train_list_norm <- main_effects_test_list_norm <- main_effects_train_list <- main_effects_test_list <- vector("list", length = length(dummy_x$continuousVars)+NCOL(interaction_list))
 
       for(list_size in 1:length(main_effects_train_list)){
-        main_effects_train_list[[list_size]] <- matrix(0,nrow = n_mcmc,ncol = nrow(x_train))
-        main_effects_test_list[[list_size]] <- matrix(0,nrow = n_mcmc,ncol = nrow(x_test))
+        main_effects_train_list[[list_size]] <- main_effects_train_list_norm[[list_size]] <- matrix(0,nrow = n_mcmc,ncol = nrow(x_train))
+        main_effects_test_list[[list_size]] <- main_effects_test_list_norm[[list_size]] <- matrix(0,nrow = n_mcmc,ncol = nrow(x_test))
       }
 
       # Renaming the main list
       if(interaction_term){
         internames_ <- apply(interaction_list,2,function(vars_){paste0("x",paste0(vars_,collapse = ":"))})
-        names(main_effects_train_list) <- names(main_effects_test_list) <- c(dummy_x$continuousVars, internames_)
+        names(main_effects_train_list_norm) <- names(main_effects_test_list_norm) <- names(main_effects_train_list) <- names(main_effects_test_list) <- c(dummy_x$continuousVars, internames_)
       } else {
-        names(main_effects_train_list) <- names(main_effects_test_list) <-dummy_x$continuousVars
+        names(main_effects_train_list_norm) <- names(main_effects_test_list_norm) <- names(main_effects_train_list) <- names(main_effects_test_list) <-dummy_x$continuousVars
       }
 
 
     } else { # In case there are no interactions
-      main_effects_train_list <- main_effects_test_list <- vector("list", length = length(dummy_x$continuousVars))
+      main_effects_train_list_norm <- main_effects_test_list_norm <- main_effects_train_list <- main_effects_test_list <- vector("list", length = length(dummy_x$continuousVars))
 
       for(list_size in 1:length(dummy_x$continuousVars)){
-        main_effects_train_list[[list_size]] <- matrix(0,nrow = n_mcmc,ncol = nrow(x_train))
-        main_effects_test_list[[list_size]] <- matrix(0,nrow = n_mcmc,ncol = nrow(x_test))
+        main_effects_train_list[[list_size]] <- main_effects_train_list_norm[[list_size]] <- matrix(0,nrow = n_mcmc,ncol = nrow(x_train))
+        main_effects_test_list[[list_size]] <- main_effects_train_list_norm[[list_size]] <- matrix(0,nrow = n_mcmc,ncol = nrow(x_test))
       }
 
-      names(main_effects_train_list) <- names(main_effects_test_list) <- dummy_x$continuousVars
+      names(main_effects_train_list_norm) <- names(main_effects_test_list_norm) <-  names(main_effects_train_list) <- names(main_effects_test_list) <- dummy_x$continuousVars
     }
   } else {
-    main_effects_train_list <- main_effects_test_list <- NULL
+    main_effects_train_list_norm <- main_effects_test_list_norm <- main_effects_train_list <- main_effects_test_list <- NULL
   }
 
   # Gonna create a list of lists to store all the indexes for all split rules and cutpoints
@@ -671,7 +671,7 @@ rspBART <- function(x_train,
       if(interaction_term){
         par(mfrow = c(2,floor(NCOL(data$x_train)/2)))
         for(jj in 1:NCOL(data$x_train)){
-          plot(x_train[,jj],colMeans(main_effects_train_list[[jj]][1:i,, drop = FALSE]),main = paste0('X',jj),
+          plot(x_train[,jj],colMeans(main_effects_train_list_norm[[jj]][1:i,, drop = FALSE]),main = paste0('X',jj),
                ylab = paste0('G(X',jj,')'))
         }
         par(mfrow = c(1,1))
@@ -776,8 +776,8 @@ rspBART <- function(x_train,
 
       if(main_effects_pred){
         for(ii in 1:length(main_effects_train_list)){
-          main_effects_train_list[[ii]][post_iter,] <- unnormalize_bart(z = main_effects_train_list[[ii]][post_iter,],a = min_y,b = max_y)
-          main_effects_test_list[[ii]][post_iter,] <- unnormalize_bart(z = main_effects_test_list[[ii]][post_iter,],a = min_y,b = max_y)
+          main_effects_train_list_norm[[ii]][post_iter,] <- unnormalize_bart(z = main_effects_train_list[[ii]][post_iter,],a = min_y,b = max_y)
+          main_effects_test_list_norm[[ii]][post_iter,] <- unnormalize_bart(z = main_effects_test_list[[ii]][post_iter,],a = min_y,b = max_y)
         }
       }
     }
