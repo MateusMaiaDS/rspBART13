@@ -853,9 +853,9 @@ rspBART <- function(x_train,
                           main_effects_test = main_effects_test_list),
               data = list(x_train = x_train,
                           y_train = y_train,
-                          D_train = D_train,
+                          B_train = B_train_obj,
                           x_test = x_test,
-                          D_test = D_test,
+                          B_test = B_test_obj,
                           basis_subindex = basis_subindex)))
 
 }

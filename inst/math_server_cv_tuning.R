@@ -10,9 +10,9 @@ source("R/main_function.R")
 set.seed(42)
 
 n_ <- 250
-sd_ <- 1
+sd_ <- 5
 n_rep_ <- 10
-nIknots_ <- 2
+nIknots_ <- 5
 ntree_ <- 10
 dif_order_ <- 1
 use_bs_ <- FALSE
@@ -24,6 +24,7 @@ stump_ <- FALSE
 scale_init_ <- FALSE
 update_tau_beta_ <- TRUE
 inter_ <- TRUE
+
 # Selecting a simulated scenarion
 # (1): "oned_break" one dimensionnal sin(2*x) with a break
 # (2): "friedman_nointer_nonoise": four-dimensional friedmna setting with no interaction terms and no extra X noise variables
@@ -144,7 +145,7 @@ if(type_ == "friedman_nointer_nonoise"){
 }
 
 if(type_ == "friedman_inter_noise"){
-  saveRDS(object = result,file = paste0("/localusers/researchers/mmarques/spline_bart_lab/preliminar_results/rspBART13/friedman/v3_new_interaction_",inter_,"_oned_n_",n_,
+  saveRDS(object = result,file = paste0("/localusers/researchers/mmarques/spline_bart_lab/preliminar_results/rspBART13/friedman/v4_new_interaction_",inter_,"_oned_n_",n_,
                                         "_sd_",sd_,"_nIknots_",nIknots_,"_ntree_",ntree_,"_bs_",use_bs_,
                                         "_motr_bart_",motr_bart_,"_allvar_",all_,"_stump_",stump_,
                                         "_sinit_",scale_init_,"_alpha_",alpha_,"_uptaubeta_",update_tau_beta_,"_dif_",dif_order_,".Rds"))

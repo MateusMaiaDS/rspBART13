@@ -107,11 +107,9 @@ nodeLogLike <- function(curr_part_res,
 
       # Adding the quantities with respect to the interaction
       if(j_[jj] <= length(data$dummy_x$continuousVars)){
-        cov_aux <- cov_aux + data$tau_beta[j_[jj]]*tcrossprod((tcrossprod(data$B_train[[j_[jj]]][index_node,,drop = FALSE],data$P)),
-                                                              data$B_train[[j_[jj]]][index_node,,drop = FALSE])
+        cov_aux <- cov_aux + data$B_train[[j_[jj]]][index_node,,drop = FALSE]%*%solve(data$P,t(data$B_train[[j_[jj]]][index_node,,drop = FALSE]))
       } else {
-        cov_aux <- cov_aux + data$tau_beta[j_[jj]]*tcrossprod(tcrossprod(data$B_train[[j_[jj]]][index_node,,drop = FALSE],data$P_interaction),
-                                                              data$B_train[[j_[jj]]][index_node,,drop = FALSE])
+        cov_aux <- cov_aux + data$B_train[[j_[jj]]][index_node,,drop = FALSE]%*%solve(data$P_interaction,t(data$B_train[[j_[jj]]][index_node,,drop = FALSE]))
       }
     }
   }
@@ -1016,6 +1014,7 @@ updateBetas <- function(tree,
       # Getting the index for the vector of betas
 
       b_ <- crossprod(data$B_train[[node_index_var[jj]]][cu_t$train_index,,drop=FALSE],res_leaf)
+
       data_tau_beta_diag <- rep(data$tau_beta[node_index_var], NCOL(data$B_train[[node_index_var[jj]]])) # Don't really use this
       if(node_index_var[jj]<=length(data$dummy_x$continuousVars)){
         U_ <- data$P*data$tau_beta[node_index_var[jj]]
@@ -1034,7 +1033,8 @@ updateBetas <- function(tree,
       new_betas <- matrix(new_betas,nrow = 1)
       # Updating the residuals
       new_partial_pred <- tcrossprod(data$B_train[[node_index_var[jj]]][cu_t$train_index,,drop=FALSE],new_betas)
-      trees_fit[j,cu_t$train_index] <- trees_fit[j,cu_t$train_index] - tcrossprod(data$B_train[[node_index_var[jj]]][cu_t$train_index,,drop=FALSE],old_betas) + new_partial_pred
+      # UNCOMMMENT THIS LINE LATER
+      # trees_fit[j,cu_t$train_index] <- trees_fit[j,cu_t$train_index] - tcrossprod(data$B_train[[node_index_var[jj]]][cu_t$train_index,,drop=FALSE],old_betas) + new_partial_pred
 
       y_hat_train[cu_t$train_index,node_index_var[jj]] <- new_partial_pred
       y_hat_test[cu_t$test_index,node_index_var[jj]] <- tcrossprod(data$B_test[[node_index_var[jj]]][cu_t$test_index,,drop=FALSE],new_betas)
