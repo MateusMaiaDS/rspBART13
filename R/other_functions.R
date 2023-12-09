@@ -120,7 +120,7 @@ unnormalize_bart <- function(z, a, b) {
 
 unnormalize_bart_me <- function(z, a, b) {
   # Just getting back to the regular BART
-  y <- (b - a) * (z + 0.5)
+  y <- (b - a) * (z )
   return(y)
 }
 

@@ -14,8 +14,8 @@ sd_ <- 1
 sim_train <- mlbench.friedman1(n = n_,sd = sd_)  |> as.data.frame()
 sim_test <- mlbench.friedman1(n = n_,sd = sd_)  |> as.data.frame()
 
-sim_train <- break.mlbench.friedman1(n = n_,sd = sd_)  |> as.data.frame()
-sim_test <- break.mlbench.friedman1(n = n_,sd = sd_)  |> as.data.frame()
+# sim_train <- break.mlbench.friedman1(n = n_,sd = sd_)  |> as.data.frame()
+# sim_test <- break.mlbench.friedman1(n = n_,sd = sd_)  |> as.data.frame()
 
 
 # sim_train <- mlbench.d1.break(n = n_,sd = 1)  |> as.data.frame()

@@ -779,9 +779,10 @@ change <- function(tree,
 
   # Getting the node_index var
   if(!any(is.na(c_node$inter))){
-    node_index_var <- c(c_node$j,which( names(data$basis_subindex) %in% paste0(c_node$j,sort(c_node$inter))))
+    # node_index_var <- c(c_node$j,which( names(data$basis_subindex) %in% paste0(c_node$j,sort(c_node$inter))))
+    node_index_var <- c_node$pred_vars
   } else {
-    node_index_var <- c_node$j
+    node_index_var <- c_node$pred_vars
   }
 
   # Calculating loglikelihood for the new changed nodes and the old ones

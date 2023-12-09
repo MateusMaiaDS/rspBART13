@@ -1,11 +1,55 @@
 # Just running the default values so I can go through the function and debug all
 #the things
-library(purrr)
-library(tidyverse)
+# library(purrr)
+# library(tidyverse)
 #Auxliar object
 # friedman_df <- std.mlbench.friedman1(n = 100,sd = 1) %>% as.data.frame()
 # plot_nrow = 2
 # break_friedman_df <- std.mlbench.friedman1(n = 250,sd = 1) %>% as.data.frame()
+
+
+plot_spBART_me <- function(train_me,x_train, plot_nrow){
+
+
+  # Getting the
+  par(mfrow = c(4,3))
+  fx1x2 <-colMeans(main_effects_train_list[[11]]) #+ main_effects_train_list[[1]] %>% colMeans()
+
+  interaction_df <- cbind(x_train[,1:2],fx1x2) %>% dplyr::arrange(fx1x2) %>% mutate(color = gray.colors(nrow(x_train)))
+
+  # Plotting interaction
+  plot(interaction_df[,1:2],cex = interaction_df$fx1x2*20,col = interaction_df$color, pch=19,main = "f(x.1,x.2)")
+
+  # Plotting x.3
+  fx1 <- colMeans(main_effects_train_list[[1]])
+  plot(x_train[,1],fx1,pch=20, xlab = "x.1", main = "f(x.1)")
+
+  # Plotting x.3
+  fx2 <- colMeans(main_effects_train_list[[2]])
+  plot(x_train[,2],fx2,pch=20, xlab = "x.2", main = "f(x.2)")
+
+  # Plotting x.3
+  fx3 <- colMeans(main_effects_train_list[[3]])
+  plot(x_train[,3],fx3,pch=20, xlab = "x.3", main = "f(x.3)")
+
+  # Plotting x.4
+  fx4 <- colMeans(main_effects_train_list[[4]])
+  plot(x_train[,4],fx4,pch=20, xlab = "x.4", main = "f(x.4)")
+
+  # Plotting x.5
+  fx5 <- colMeans(main_effects_train_list[[5]])
+  plot(x_train[,5],fx5,pch=20, xlab = "x.5", main = "f(x.5)")
+
+  plot(1, type = "n", axes = FALSE, xlab = "", ylab = "")
+
+  for(i in 6:10){
+    plot(x_train[,i],colMeans(main_effects_train_list[[i]]),pch=20,
+         xlab = paste0("x.",i,""), main = paste0("f(x.",i,")"),
+         ylab = paste0("f(x.",i,")"))
+  }
+
+
+}
 
 plot_break_friedman <- function(break_friedman_df, plot_nrow){
 

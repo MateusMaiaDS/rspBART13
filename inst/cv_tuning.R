@@ -13,7 +13,7 @@ n_ <- 250
 sd_ <- 1
 n_rep_ <- 10
 nIknots_ <- 2
-ntree_ <- 50
+ntree_ <- 10
 dif_order_ <- 1
 use_bs_ <- FALSE
 seed_ <- 42
@@ -23,12 +23,12 @@ alpha_ <- 0.5
 stump_ <- FALSE
 scale_init_ <- FALSE
 update_tau_beta_ <- TRUE
-inter_ <- FALSE
+inter_ <- TRUE
 # Selecting a simulated scenarion
 # (1): "oned_break" one dimensionnal sin(2*x) with a break
 # (2): "friedman_nointer_nonoise": four-dimensional friedmna setting with no interaction terms and no extra X noise variables
 # (3): "interaction
-type_ <- c("friedman_inter_noise")
+type_ <- c("friedman_break")
 
 # type_ <- c("friedman_inter_noise")
 
@@ -53,6 +53,11 @@ for( i in 1:n_rep_){
     if(type_ == "friedman_nointer_nonoise"){
         train <- mlbench.friedman1.nointeraction(n = n_,sd = sd_) %>% as.data.frame()
         test <- mlbench.friedman1.nointeraction(n = n_,sd = sd_) %>% as.data.frame()
+    }
+
+    if(type_ == "friedman_break"){
+      train <- break.mlbench.friedman1(n = n_,sd = sd_) %>% as.data.frame()
+      test <- break.mlbench.friedman1(n = n_,sd = sd_) %>% as.data.frame()
     }
 
     if(type_ == "friedman_nointer_noise"){
@@ -148,6 +153,13 @@ if(type_ == "friedman_inter_noise"){
                                             "_sd_",sd_,"_nIknots_",nIknots_,"_ntree_",ntree_,"_bs_",use_bs_,
                                             "_motr_bart_",motr_bart_,"_allvar_",all_,"_stump_",stump_,
                                             "_sinit_",scale_init_,"_alpha_",alpha_,"_uptaubeta_",update_tau_beta_,"_dif_",dif_order_,".Rds"))
+}
+
+if(type_ == "friedman_break"){
+  saveRDS(object = result,file = paste0("/users/research/mmarques/spline_bart_lab/preliminar_results/rspBART13/friedman_break/v3_new_interaction_",inter_,"_oned_n_",n_,
+                                        "_sd_",sd_,"_nIknots_",nIknots_,"_ntree_",ntree_,"_bs_",use_bs_,
+                                        "_motr_bart_",motr_bart_,"_allvar_",all_,"_stump_",stump_,
+                                        "_sinit_",scale_init_,"_alpha_",alpha_,"_uptaubeta_",update_tau_beta_,"_dif_",dif_order_,".Rds"))
 }
 
 if(type_ == "friedman_nointer_noise"){

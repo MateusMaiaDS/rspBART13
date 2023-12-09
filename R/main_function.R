@@ -569,9 +569,12 @@ rspBART <- function(x_train,
 
       # Checking the trees variables
       # lapply(forest,function(x){x$node0$j}) %>% unlist%>% table()
-
+      #
       # forest[[1]] %>% lapply(function(x) x$inter) %>% unlist()
+      # forest %>% lapply(function(x) x$node0$j) %>% unlist()
+      # forest[[2]]$node0$inter
       # # Forcing to grow when only have a stump
+
       # if(length(forest[[t]])==1){
       #   if(!data$all_var){
       #     verb <- sample(c("grow","change"),size = 1)
@@ -671,8 +674,8 @@ rspBART <- function(x_train,
       if(interaction_term){
         par(mfrow = c(2,floor(NCOL(data$x_train)/2)))
         for(jj in 1:NCOL(data$x_train)){
-          plot(x_train[,jj],colMeans(main_effects_train_list_norm[[jj]][1:i,, drop = FALSE]),main = paste0('X',jj),
-               ylab = paste0('G(X',jj,')'))
+          plot(x_train[,jj],colMeans(main_effects_train_list_norm[[jj]][2000:i,, drop = FALSE]),main = paste0('X',jj),
+               ylab = paste0('G(X',jj,')'), ylim = c(min_y,max_y))
         }
         par(mfrow = c(1,1))
       }
@@ -776,8 +779,8 @@ rspBART <- function(x_train,
 
       if(main_effects_pred){
         for(ii in 1:length(main_effects_train_list)){
-          main_effects_train_list_norm[[ii]][post_iter,] <- unnormalize_bart(z = main_effects_train_list[[ii]][post_iter,],a = min_y,b = max_y)
-          main_effects_test_list_norm[[ii]][post_iter,] <- unnormalize_bart(z = main_effects_test_list[[ii]][post_iter,],a = min_y,b = max_y)
+          main_effects_train_list_norm[[ii]][post_iter,] <- unnormalize_bart_me(z = main_effects_train_list[[ii]][post_iter,],a = min_y,b = max_y)
+          main_effects_test_list_norm[[ii]][post_iter,] <- unnormalize_bart_me(z = main_effects_test_list[[ii]][post_iter,],a = min_y,b = max_y)
         }
       }
     }
@@ -849,8 +852,8 @@ rspBART <- function(x_train,
               mcmc = list(n_mcmc = n_mcmc,
                           n_burn = n_burn,
                           all_trees = all_trees,
-                          main_effects_train = main_effects_train_list,
-                          main_effects_test = main_effects_test_list),
+                          main_effects_train = main_effects_train_list_norm,
+                          main_effects_test = main_effects_test_list_norm),
               data = list(x_train = x_train,
                           y_train = y_train,
                           B_train = B_train_obj,
