@@ -13,7 +13,7 @@ n_ <- 250
 sd_ <- 1
 n_rep_ <- 10
 nIknots_ <- 2
-ntree_ <- 10
+ntree_ <- 50
 dif_order_ <- 1
 use_bs_ <- FALSE
 seed_ <- 42
@@ -156,7 +156,7 @@ if(type_ == "friedman_inter_noise"){
 }
 
 if(type_ == "friedman_break"){
-  saveRDS(object = result,file = paste0("/users/research/mmarques/spline_bart_lab/preliminar_results/rspBART13/friedman_break/v3_new_interaction_",inter_,"_oned_n_",n_,
+  saveRDS(object = result,file = paste0("/users/research/mmarques/spline_bart_lab/preliminar_results/rspBART13/friedman_break/v5_new_interaction_",inter_,"_oned_n_",n_,
                                         "_sd_",sd_,"_nIknots_",nIknots_,"_ntree_",ntree_,"_bs_",use_bs_,
                                         "_motr_bart_",motr_bart_,"_allvar_",all_,"_stump_",stump_,
                                         "_sinit_",scale_init_,"_alpha_",alpha_,"_uptaubeta_",update_tau_beta_,"_dif_",dif_order_,".Rds"))

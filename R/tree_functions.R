@@ -96,14 +96,14 @@ nodeLogLike <- function(curr_part_res,
   # diag_tau_beta_inv <- diag(x = 1/unique(data$tau_beta), nrow = )
 
   for(jj in 1:length(j_)){
-    if(data$dif_order==0){
-      stop("Never")
-      # P_aux <- data$P[D_subset_index,D_subset_index]
-      # for(jj in 1:length(j_)){
-      #   P_aux[data$basis_subindex[[jj]],data$basis_subindex[[jj]]] <- data$tau_beta[jj]*data$P[data$basis_subindex[[jj]],data$basis_subindex[[jj]]]
-      # }
-      cov_aux <- diag(x = (data$tau^(-1)),nrow = n_leaf) + D_leaf%*%tcrossprod(diag_tau_beta_inv,D_leaf)
-    } else {
+    # if(data$dif_order==0){
+    #   stop("Never")
+    #   # P_aux <- data$P[D_subset_index,D_subset_index]
+    #   # for(jj in 1:length(j_)){
+    #   #   P_aux[data$basis_subindex[[jj]],data$basis_subindex[[jj]]] <- data$tau_beta[jj]*data$P[data$basis_subindex[[jj]],data$basis_subindex[[jj]]]
+    #   # }
+    #   cov_aux <- diag(x = (data$tau^(-1)),nrow = n_leaf) + D_leaf%*%tcrossprod(diag_tau_beta_inv,D_leaf)
+    # } else {
 
       # Adding the quantities with respect to the interaction
       if(j_[jj] <= length(data$dummy_x$continuousVars)){
@@ -111,7 +111,7 @@ nodeLogLike <- function(curr_part_res,
       } else {
         cov_aux <- cov_aux + data$B_train[[j_[jj]]][index_node,,drop = FALSE]%*%solve(data$P_interaction,t(data$B_train[[j_[jj]]][index_node,,drop = FALSE]))
       }
-    }
+    # }
   }
   cov_aux <- diag(x = (data$tau^(-1)),nrow = n_leaf) + cov_aux
 
@@ -971,8 +971,8 @@ updateBetas <- function(tree,
 
 
   # Getting the current prediction for that tree
-  y_hat_train <- matrix(0,nrow = nrow(data$x_train),ncol = length(tree$node0$betas_vec))
-  y_hat_test <- matrix(0,nrow = nrow(data$x_test),ncol = length(tree$node0$betas_vec))
+  y_hat_train <- matrix(0,nrow = nrow(data$x_train),ncol = length(data$basis_subindex))
+  y_hat_test <- matrix(0,nrow = nrow(data$x_test),ncol = length(data$basis_subindex))
 
   for(i in 1:length(t_nodes_names)){
 
@@ -1034,8 +1034,8 @@ updateBetas <- function(tree,
       new_betas <- matrix(new_betas,nrow = 1)
       # Updating the residuals
       new_partial_pred <- tcrossprod(data$B_train[[node_index_var[jj]]][cu_t$train_index,,drop=FALSE],new_betas)
-      # UNCOMMMENT THIS LINE LATER
-      # trees_fit[j,cu_t$train_index] <- trees_fit[j,cu_t$train_index] - tcrossprod(data$B_train[[node_index_var[jj]]][cu_t$train_index,,drop=FALSE],old_betas) + new_partial_pred
+      # Need to update the trees fit!
+      trees_fit[j,cu_t$train_index] <- trees_fit[j,cu_t$train_index] - tcrossprod(data$B_train[[node_index_var[jj]]][cu_t$train_index,,drop=FALSE],old_betas) + new_partial_pred
 
       y_hat_train[cu_t$train_index,node_index_var[jj]] <- new_partial_pred
       y_hat_test[cu_t$test_index,node_index_var[jj]] <- tcrossprod(data$B_test[[node_index_var[jj]]][cu_t$test_index,,drop=FALSE],new_betas)

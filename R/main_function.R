@@ -321,8 +321,9 @@ rspBART <- function(x_train,
   # Getting hyperparameters for \tau_beta_j
   # df <- 3
   a_tau_beta_j <- df/2
-  sigquant_beta <- 0.99
+  sigquant_beta <- 0.7
   nsigma_beta <- tau_mu^(-1/2)
+  nsigma_beta <- 1
 
   # Calculating lambda
   qchi_beta <- stats::qchisq(p = 1-sigquant_beta,df = df,lower.tail = 1,ncp = 0)
@@ -464,13 +465,21 @@ rspBART <- function(x_train,
   }
 
   # Creating the penalty matrix
-
-  P_train_main <- P_gen(D_train_ = B_train_obj[[1]],dif_order_ = dif_order,eta = 1)
+  if(dif_order==0){
+    P_train_main <- diag(nrow = NCOL(B_train_obj[[1]]))
+  } else {
+    P_train_main <- P_gen(D_train_ = B_train_obj[[1]],dif_order_ = dif_order,eta = 1)
+  }
 
 
   # Creating the penalty matrix for the interaction
   if(interaction_term){
-    P_interaction <-  kronecker(P_train_main,P_train_main)
+    if(dif_order == 0){
+      P_interaction <- diag(nrow = NCOL(B_train_obj[[1]])^2)
+    } else {
+      P_interaction <-  kronecker(P_train_main,P_train_main)
+    }
+
   } else {
     P_interaction <- NULL
   }
@@ -488,7 +497,7 @@ rspBART <- function(x_train,
                all_var_splits = all_var_splits,
                n_tree = n_tree,
                tau_mu = tau_mu,
-               tau = nsigma^(-2)*0.1,
+               tau = nsigma^(-2),
                a_tau = a_tau,
                d_tau = d_tau,
                tau_beta = tau_beta,
@@ -570,7 +579,7 @@ rspBART <- function(x_train,
       # Checking the trees variables
       # lapply(forest,function(x){x$node0$j}) %>% unlist%>% table()
       #
-      # forest[[1]] %>% lapply(function(x) x$inter) %>% unlist()
+      # forest[[4]] %>% lapply(function(x) x$inter) %>% unlist()
       # forest %>% lapply(function(x) x$node0$j) %>% unlist()
       # forest[[2]]$node0$inter
       # # Forcing to grow when only have a stump
@@ -669,18 +678,7 @@ rspBART <- function(x_train,
       }
     }
 
-    # Visualizing some plots
-    if(plot_preview){
-      if(interaction_term){
-        par(mfrow = c(2,floor(NCOL(data$x_train)/2)))
-        for(jj in 1:NCOL(data$x_train)){
-          plot(x_train[,jj],colMeans(main_effects_train_list_norm[[jj]][2000:i,, drop = FALSE]),main = paste0('X',jj),
-               ylab = paste0('G(X',jj,')'), ylim = c(min_y,max_y))
-        }
-        par(mfrow = c(1,1))
-      }
 
-    }
 
     # Getting final predcition
     y_hat <- colSums(trees_fit)
@@ -792,6 +790,20 @@ rspBART <- function(x_train,
     all_y_hat_norm <- all_y_hat
     all_y_hat_test_norm <- all_y_hat_test
   }
+
+  # Visualizing some plots
+  if(plot_preview){
+    if(interaction_term){
+      par(mfrow = c(2,floor(NCOL(data$x_train)/2)))
+      for(jj in 1:NCOL(data$x_train)){
+        plot(x_train[,jj],colMeans(main_effects_train_list[[jj]][1:i,, drop = FALSE]),main = paste0('X',jj),
+             ylab = paste0('G(X',jj,')'))
+      }
+      par(mfrow = c(1,1))
+    }
+
+  }
+
   # plot(colMeans(all_y_hat_norm),y_train)
   # sqrt(crossprod((colMeans(all_y_hat_norm)-y_train))/n_)
 
