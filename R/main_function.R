@@ -37,7 +37,9 @@ rspBART <- function(x_train,
                     main_effects_pred = FALSE,
                     interaction_term =  FALSE,
                     interaction_list = NULL,
-                    store_tree_fit = FALSE
+                    store_tree_fit = FALSE,
+                    mle_prior = FALSE,
+                    linero_sampler = TRUE
 ) {
 
 
@@ -98,10 +100,10 @@ rspBART <- function(x_train,
 
 
   # Normalising all the columns
-  for(i in 1:ncol(x_train)){
-    x_train_scale[,i] <- normalize_covariates_bart(y = x_train_scale[,i],a = x_min[i], b = x_max[i])
-    x_test_scale[,i] <- normalize_covariates_bart(y = x_test_scale[,i],a = x_min[i], b = x_max[i])
-  }
+  # for(i in 1:ncol(x_train)){
+  #   x_train_scale[,i] <- normalize_covariates_bart(y = x_train_scale[,i],a = x_min[i], b = x_max[i])
+  #   x_test_scale[,i] <- normalize_covariates_bart(y = x_test_scale[,i],a = x_min[i], b = x_max[i])
+  # }
 
 
 
@@ -169,8 +171,11 @@ rspBART <- function(x_train,
   interactions_subindex <- split(D_int_seq, rep(1:((length(D_int_seq) %/% basis_size)), each = basis_size^2, length.out = length(D_int_seq)))
 
   # Getting the final basis subindex
-  basis_subindex <- append(basis_subindex_main,interactions_subindex)
-
+  if(interaction_term){
+      basis_subindex <- append(basis_subindex_main,interactions_subindex)
+  } else {
+      basis_subindex <- basis_subindex_main
+  }
 
 
   # Creating the natural B-spline for each predictor
@@ -321,9 +326,9 @@ rspBART <- function(x_train,
   # Getting hyperparameters for \tau_beta_j
   # df <- 3
   a_tau_beta_j <- df/2
-  sigquant_beta <- 0.7
+  sigquant_beta <- 0.9
   nsigma_beta <- tau_mu^(-1/2)
-  nsigma_beta <- 1
+  # nsigma_beta <- 1
 
   # Calculating lambda
   qchi_beta <- stats::qchisq(p = 1-sigquant_beta,df = df,lower.tail = 1,ncp = 0)
@@ -384,6 +389,7 @@ rspBART <- function(x_train,
   if(store_tree_fit){
     partial_train_fits <- vector("list", n_tree)
   }
+
   proposal_outcomes <- setNames(data.frame(matrix(nrow = 0, ncol = 6)),
                                 c("tree_number" , "proposal", "status","mcmc_iter", "new_tree_loglike", "old_tree_loglike"))
   all_train_indexes <- data.frame(matrix(data = NA,nrow = nrow(xcut_m),ncol = ncol(xcut_m)))
@@ -484,6 +490,57 @@ rspBART <- function(x_train,
     P_interaction <- NULL
   }
 
+
+  # Here define a new vector of priors for \tau_beta_j
+  # Can we fit the bigger model
+  if(mle_prior){
+
+      all_p <- length(basis_subindex)
+
+      nll2 <- function(pars) {
+        sigma <- pars[1]
+        sigma_b <- pars[2:(all_p+1)]
+        Big_var <- matrix(0, nrow(x_train), nrow(x_train))
+
+        for(pp in 1:(all_p)) {
+
+          if(pp <= NCOL(x_train)){
+            Big_var <- Big_var +  (sigma_b[pp]^(2))*B_train_obj[[pp]]%*%t(B_train_obj[[pp]])
+          } else {
+            Big_var <- Big_var +  (sigma_b[pp]^(2))*B_train_obj[[pp]]%*%t(B_train_obj[[pp]])
+          }
+
+        }
+        return(-mvnfast::dmvn(y_train, rep(0, nrow(x_train)),
+                              diag(sigma^2, nrow(x_train)) + Big_var,
+                              log = TRUE))
+      }
+
+      ans2 <- nlminb(rep(1, (length(basis_subindex)+1)), nll2, lower = rep(1e-5, (length(basis_subindex)+1)))
+
+      # Defining tau beta and removing the first element
+      tau_beta <-  (ans2$par^(-2))[-1]
+
+      # Rescaling based on the scaled
+      tau_beta <- tau_beta*n_tree*((max_y-min_y)^2)
+      d_tau_beta_j <- numeric(all_p)
+
+      for(pp in 1:all_p){
+          sigquant_beta <- 0.9
+          nsigma_beta <- (tau_beta[pp]*n_tree)^(-1/2)
+          # nsigma_beta <- 1
+
+          # Calculating lambda
+          qchi_beta <- stats::qchisq(p = 1-sigquant_beta,df = df,lower.tail = 1,ncp = 0)
+          lambda_beta <- (nsigma_beta*nsigma_beta*qchi_beta)/df
+          d_tau_beta_j[pp] <- (lambda_beta*df)/2
+      }
+
+  }
+
+  # Tau_beta_priors
+
+
   #most of the functions
   data <- list(x_train = x_train_scale,
                x_test = x_test_scale,
@@ -511,7 +568,8 @@ rspBART <- function(x_train,
                d_tau_beta_j = d_tau_beta_j,
                interaction_term = interaction_term,
                interaction_list = interaction_list,
-               dummy_x = dummy_x)
+               dummy_x = dummy_x,
+               linero_sampler = linero_sampler)
 
   #   So to simply interepret the element all_var_splits each element correspond
   #to each variable. Afterwards each element corresponds to a cutpoint; Finally,
@@ -542,6 +600,10 @@ rspBART <- function(x_train,
       }
     }
   }
+
+
+  # Setting a matrix to store the frequency that a variable appear within terminal nodes
+  variable_importance_matrix <- matrix(0,nrow =n_mcmc, ncol = length(data$basis_subindex))
 
   # Initialsing the loop
   for(i in 1:n_mcmc){
@@ -577,9 +639,12 @@ rspBART <- function(x_train,
       # }
 
       # Checking the trees variables
-      # lapply(forest,function(x){x$node0$j}) %>% unlist%>% table()
+      lapply(forest,function(x){(x$node0$pred_vars)}) %>% unlist ->f
+      f %>% table()
       #
-      # forest[[4]] %>% lapply(function(x) x$inter) %>% unlist()
+      # forest[[1]] %>% lapply(function(x) x$inter) %>% unlist()
+
+      # forest[[5]]$node0$inter
       # forest %>% lapply(function(x) x$node0$j) %>% unlist()
       # forest[[2]]$node0$inter
       # # Forcing to grow when only have a stump
@@ -652,15 +717,15 @@ rspBART <- function(x_train,
       # Running the plot functions
       # ==========================
 
-      if(plot_preview){
-        choose_dimension <- 1
-        if(t==1){
-          plot(x_train_scale[,choose_dimension],update_betas_aux$y_train_hat[,choose_dimension], pch = 20, main = paste0("X",choose_dimension," partial pred"),ylim = range(y_scale),
-               col = ggplot2::alpha("black",0.2))
-        } else {
-          points(x_train_scale[,choose_dimension],update_betas_aux$y_train_hat[,choose_dimension], pch=20, col = ggplot2::alpha(t,0.2))
-        }
-      }
+      # if(plot_preview){
+      #   choose_dimension <- 1
+      #   if(t==1){
+      #     plot(x_train_scale[,choose_dimension],update_betas_aux$y_train_hat[,choose_dimension], pch = 20, main = paste0("X",choose_dimension," partial pred"),ylim = range(y_scale),
+      #          col = ggplot2::alpha("black",0.2))
+      #   } else {
+      #     points(x_train_scale[,choose_dimension],update_betas_aux$y_train_hat[,choose_dimension], pch=20, col = ggplot2::alpha(t,0.2))
+      #   }
+      # }
 
       # if(plot_preview){
       #   points(x_train_scale[,choose_dimension],x1_pred, pch=20, col = "blue")
@@ -676,9 +741,11 @@ rspBART <- function(x_train,
           main_effects_test_list[[ii]][i,] <- main_effects_test_list[[ii]][i,] + update_betas_aux$y_hat_test[,ii]
         }
       }
+
     }
 
 
+    variable_importance_matrix[i, ] <- varimportance(forest = forest,data = data)
 
     # Getting final predcition
     y_hat <- colSums(trees_fit)
@@ -796,13 +863,37 @@ rspBART <- function(x_train,
     if(interaction_term){
       par(mfrow = c(2,floor(NCOL(data$x_train)/2)))
       for(jj in 1:NCOL(data$x_train)){
-        plot(x_train[,jj],colMeans(main_effects_train_list[[jj]][1:i,, drop = FALSE]),main = paste0('X',jj),
-             ylab = paste0('G(X',jj,')'))
+        plot(x_train[,jj],colMeans(main_effects_train_list_norm[[jj]][1000:i,, drop = FALSE]),main = paste0('X',jj),
+             ylab = paste0('G(X',jj,')'),ylim = c(-30,30),pch=20,xlab = paste0('x.',jj))
+
+        # if( jj ==3 ){
+        #   points(x_train[,jj],20*(x_train[,jj]-0.5)^2,pch = 20, col = "blue")
+        # } else if ( jj == 4){
+        #   points(x_train[,jj],10*x_train[,jj],pch = 20, col = "blue")
+        # } else if ( jj == 5){
+        #   points(x_train[,jj],5*x_train[,jj],pch = 20, col = "blue")
+        # }
+
       }
       par(mfrow = c(1,1))
     }
 
   }
+
+  # # Some extra analysis
+  # par(mfrow=c(2,2))
+  # plot(all_tau_norm, type = 'l', ylab = expression(tau), xlab = "MCMC_iter",main = expression(tau))
+  # abline(v = 1318, lty = 'dashed', col = 'blue')
+  #
+  # plot(all_tau_beta[,11], type = 'l', ylab = expression(tau[11]), xlab = "MCMC_iter",main = expression(tau[11]))
+  # abline(v = 1318, lty = 'dashed', col = 'blue')
+  #
+  # plot(all_tau_beta[,1], type = 'l', ylab = expression(tau[1]), xlab = "MCMC_iter",main = expression(tau[1]))
+  # abline(v = 1318, lty = 'dashed', col = 'blue')
+  #
+  # plot(all_tau_beta[,2], type = 'l', ylab = expression(tau[2]), xlab = "MCMC_iter",main = expression(tau[2]))
+  # abline(v = 1318, lty = 'dashed', col = 'blue')
+
 
   # plot(colMeans(all_y_hat_norm),y_train)
   # sqrt(crossprod((colMeans(all_y_hat_norm)-y_train))/n_)

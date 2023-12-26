@@ -120,11 +120,19 @@ unnormalize_bart <- function(z, a, b) {
 
 unnormalize_bart_me <- function(z, a, b) {
   # Just getting back to the regular BART
-  y <- (b - a) * (z )
+  y <- (b - a) * (z)
   return(y)
 }
 
 
+# Half-cauchy log-density
+log_hcauchy <- function(x, mu = 0, sigma) {
+  if(x >= mu) {
+    return(log(2) - log(pi*sigma) - log(1+(x-mu)/sigma^2))
+  } else {
+    return(-Inf)
+  }
+}
 
 # Naive sigma_estimation
 naive_sigma <- function(x,y){

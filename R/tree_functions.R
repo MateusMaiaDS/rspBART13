@@ -1,3 +1,23 @@
+# A function to get which variables are used within each terminal node
+varimportance <- function(forest, data){
+
+  # Getting the auxilinar vector
+  var_counter <- var_counter_aux <- numeric(length = length(data$basis_subindex))
+
+  for(ii_ in 1:data$n_tree){
+    tree_ <- forest[[ii_]]
+    terminal_names <- get_terminals(tree = tree_)
+    n_terminal <- length(terminal_names)
+    var_counter_aux <- numeric(length = length(data$basis_subindex))
+
+    for(jj_ in 1:length(terminal_names)){
+      var_counter_aux[tree_[[terminal_names[jj_]]]$pred_vars] <- var_counter_aux[tree_[[terminal_names[jj_]]]$pred_vars] + 1
+    }
+    var_counter <- var_counter + var_counter_aux/n_terminal
+  }
+
+  return(var_counter/data$n_tree)
+}
 # Creating a stump for a tree
 stump <- function(data,
                   j){
@@ -363,7 +383,7 @@ add_interaction <- function(tree,
     # Sample a split var
     # ===== Uncomment this line below after ========
     p_var <- sample(interaction_candidates,size = 1)
-    # p_var <- 10
+    # p_var <- 2
     # ==============================================
 
     # In case of sampling the main effect
@@ -424,9 +444,10 @@ add_interaction <- function(tree,
     acceptance <- acceptance*(-1)
   }
 
-  if(g_node$j %in% interaction_candidates){
-    Stop("Cannot have the main effect variable into the candidates of the model")
-  }
+  # THIS NO LONGER TRUE I CAN ADD
+  # if(g_node$j %in% interaction_candidates){
+  #   stop("Cannot have the main effect variable into the candidates of the model")
+  # }
 
   # Getting the training the left and the right index for the the grown node
   if(stats::runif(n = 1)<acceptance){
@@ -554,7 +575,7 @@ prune_interaction <- function(tree,
   terminal_nodes <- get_terminals(tree)
   n_t_nodes <- length(terminal_nodes)
 
-  t_with_inter <- names(which(sapply(terminal_nodes,function(node){(!all(is.na(tree[[node]]$inter))) & (length(tree[[node]]$node_vars)>1)})))
+  t_with_inter <- names(which(sapply(terminal_nodes,function(node){(!all(is.na(tree[[node]]$inter))) & (length(tree[[node]]$pred_vars)>1)})))
 
 
   if(length(t_with_inter)==0){
@@ -600,7 +621,7 @@ prune_interaction <- function(tree,
         if(p_node$j %in% p_node$pred_vars){ # Checking if the main effect gonna be present in the predictors
           new_node_index_var <- c(p_node$j,which( names(data$basis_subindex) %in% paste0(sort(c(p_node$j,new_p_inter)),collapse = "")))
         } else {
-          new_node_index_var <- which( names(data$basis_subindex) %in% paste0(sort(c(p_node$j,new_p_inter)),collapse = ""))
+          new_node_index_var <- sort(unique(which( names(data$basis_subindex) %in% apply(sapply(new_p_inter,function(x){sort(c(p_node$j,x))}),2,function(y){paste0(y,collapse = "")}) )) )
         }
       } else {
         new_p_inter <- p_node$inter
@@ -1138,19 +1159,85 @@ update_tau_betas_j <- function(forest,
   }
 
   if(data$interaction_term){
-    for(j in 1:(NCOL(data$x_train)+NCOL(data$interaction_list)) ){
-      tau_beta_vec_aux[j] <- rgamma(n = 1,
-                                    shape = 0.5*tau_b_shape[j] + a_tau_beta,
-                                    rate = 0.5*tau_b_rate[j] + d_tau_beta)
+
+    if(data$linero_sampler){
+
+      # Use Linero sampler to solve this matter
+      for(j in 1:(NCOL(data$x_train)+NCOL(data$interaction_list)) ){
+
+        if(length(d_tau_beta)>1){
+          tau_beta_vec_aux_proposal <- rgamma(n = 1,
+                                        shape = 0.5*tau_b_shape[j] + a_tau_beta,
+                                        rate = 0.5*tau_b_rate[j] + d_tau_beta[j])
+
+          # Getting the values from the proposal
+          acceptance_tau_beta_ <- exp(extraDistr::dhcauchy(x = tau_beta_vec_aux_proposal^(-1/2),sigma = data$tau_mu^(-1/2),log = TRUE)+(-3/2)*log(tau_beta_vec_aux_proposal) - extraDistr::dhcauchy(x = data$tau_beta[j]^(-1/2),sigma = data$tau_mu^(-1/2),log = TRUE)-(-3/2)*log(data$tau_beta[j]))
+
+          if(stats::runif(n = 1) < acceptance_tau_beta_){
+            tau_beta_vec_aux[j] <- tau_beta_vec_aux_proposal
+          } else {
+            tau_beta_vec_aux[j] <- data$tau_beta[j]
+          }
+
+        } else {
+          tau_beta_vec_aux_proposal <- rgamma(n = 1,
+                                        shape = 0.5*tau_b_shape[j] + a_tau_beta,
+                                        rate = 0.5*tau_b_rate[j] + d_tau_beta)
+
+          # Getting the values from the proposal
+          acceptance_tau_beta_ <- exp(extraDistr::dhcauchy(x = tau_beta_vec_aux_proposal^(-1/2),sigma = data$tau_mu^(-1/2),log = TRUE)+(-3/2)*log(tau_beta_vec_aux_proposal) - extraDistr::dhcauchy(x = data$tau_beta[j]^(-1/2),sigma = data$tau_mu^(-1/2),log = TRUE)-(-3/2)*log(data$tau_beta[j]))
+
+          if(stats::runif(n = 1) < acceptance_tau_beta_){
+            tau_beta_vec_aux[j] <- tau_beta_vec_aux_proposal
+          } else {
+            tau_beta_vec_aux[j] <- data$tau_beta[j]
+          }
+
+        }
+      }
+
+
+    } else { # This else is regarding "Linero sampler" (the chunk above wouldn't use it)
+
+        for(j in 1:(NCOL(data$x_train)+NCOL(data$interaction_list)) ){
+
+          if(length(d_tau_beta)>1){
+              tau_beta_vec_aux[j] <- rgamma(n = 1,
+                                            shape = 0.5*tau_b_shape[j] + a_tau_beta,
+                                            rate = 0.5*tau_b_rate[j] + d_tau_beta[j])
+          } else {
+            tau_beta_vec_aux[j] <- rgamma(n = 1,
+                                          shape = 0.5*tau_b_shape[j] + a_tau_beta,
+                                          rate = 0.5*tau_b_rate[j] + d_tau_beta)
+          }
+        }
 
     }
   } else {
-    for(j in 1:NCOL(data$x_train)){
+
+    # Adding the "Linero sampler option
+    if(data$linero_sampler){
+
+      for(j in 1:NCOL(data$x_train)){
+        tau_beta_vec_aux_proposal[j] <- rgamma(n = 1,
+                                               shape = 0.5*tau_b_shape[j] + a_tau_beta,
+                                               rate = 0.5*tau_b_rate[j] + d_tau_beta)
+
+        # Getting the values from the proposal
+        acceptance_tau_beta_ <- exp(extraDistr::dhcauchy(x = tau_beta_vec_aux_proposal^(-1/2),sigma = data$tau_mu^(-1/2),log = TRUE)+(-3/2)*log(tau_beta_vec_aux_proposal) - lextraDistr::dhcauchy(x = data$tau_beta[j]^(-1/2),sigma = data$tau_mu^(-1/2), log = TRUE)-(-3/2)*log(data$tau_beta[j]))
+
+        if(stats::runif(n = 1) < acceptance_tau_beta_){
+          tau_beta_vec_aux[j] <- tau_beta_vec_aux_proposal
+        } else {
+          tau_beta_vec_aux[j] <- data$tau_beta[j]
+        }
+      }
+    } else {
       tau_beta_vec_aux[j] <- rgamma(n = 1,
                                     shape = 0.5*tau_b_shape[j] + a_tau_beta,
                                     rate = 0.5*tau_b_rate[j] + d_tau_beta)
-
     }
+
   }
 
   return(tau_beta_vec_aux)
@@ -1234,7 +1321,7 @@ getPredictions <- function(tree,
 
 
     #===========
-    # Don't need to get this information in this way, all is stored in the .$node_vars
+    # Don't need to get this information in this way, all is stored in the .$pred_vars
     # if(!any(is.na(cu_t$inter))){
     #   node_index_var <- c(cu_t$j,which( names(data$basis_subindex) %in% paste0(cu_t$j,sort(cu_t$inter))))
     # } else {

@@ -439,7 +439,9 @@ all_bart_lite_interaction <- function(cv_element,
                           scale_init_,
                           update_tau_beta_,
                           dif_order_,
-                          interaction_term_){
+                          interaction_term_,
+                          mle_prior_,
+                          y_scale_){
 
 
   if(!interaction_term_){
@@ -474,11 +476,11 @@ all_bart_lite_interaction <- function(cv_element,
                     n_mcmc = 2500,node_min_size = 5,alpha = alpha_,
                     n_burn = 0,nIknots = nIknots_,n_tree = ntree_,
                     use_bs = use_bs_,all_var = rsp_bart_all_,
-                    stump = FALSE,dif_order = dif_order_,
+                    stump = FALSE,dif_order = dif_order_,scale_bool = y_scale_,
                     motrbart_bool = motr_bart_,
                     scale_init = scale_init_,
                     interaction_term = interaction_term_,main_effects_pred = FALSE,
-                    update_tau_beta = update_tau_beta_)
+                    update_tau_beta = update_tau_beta_,mle_prior = mle_prior_)
 
 
   n_burn_ <- 500
@@ -877,7 +879,8 @@ wrapping_comparison <- function(result_){
 
   }
 
-  return(comparison_metrics)
+  return(list(comparison_metrics = comparison_metrics,
+              all_tau = spBART_interaction$all_tau))
 
 }
 

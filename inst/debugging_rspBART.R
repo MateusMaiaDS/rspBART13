@@ -34,11 +34,20 @@ x_train <- sim_train |> dplyr::select(dplyr::starts_with("x"))
 x_test <-  sim_test|> dplyr::select(dplyr::starts_with("x"))
 y_train <- sim_train$y
 
+
+#== Baltimore ==#
+# baltimore<- baltimore %>% dplyr::rename(lon=X,lat=Y)
+# baltimore<- baltimore[,-1,drop=FALSE] %>% dplyr::rename(y=PRICE)
+# baltimore <- baltimore %>% select(lon,lat,SQFT,LOTSZ,y)
+# x_test <- x_train <- baltimore[,1:4,drop = FALSE]
+# y_train <- baltimore$y
+# sim_train <- sim_test <- baltimore
+
 # x_train <- x_train[,1:5]
 # x_test <- x_test[,1:5]
 n_tree <- 100
 node_min_size = 2
-n_mcmc = 3000
+n_mcmc = 5000
 n_burn = 500
 alpha = 0.5
 beta = 2
@@ -52,7 +61,7 @@ no_rotation_bool = FALSE
 numcut = 100L # Defining the grid of split rules
 usequants = TRUE
 delta <- 1
-
+linero_sampler <- TRUE
 # Splines parameters
 nIknots = 2
 dif_order = 1
@@ -64,6 +73,7 @@ all_var <- TRUE
 scale_init <- FALSE
 update_tau_beta <- TRUE
 main_effects_pred <- TRUE
+mle_prior <- FALSE
 # interaction_list_ <- interaction_list <- list(c(1,2))
 interaction_list <- NULL
 store_tree_fit <- FALSE
@@ -72,6 +82,12 @@ cv_object_ <- kfold(data_ = sim_train,nfold_ = 10,seed_ = 42)
 fold_ <- 1
 cv_object_fold_ <- cv_object_[[fold_]]
 
+aux <- dbarts::bart(x.train = x_train,y.train = y_train,x.test = x_test)
+# plot(aux$sigma, type = 'l')
+# plot(all_tau_norm^(-1/2), type = 'l'  , ylim = c(1,4), ylab = expression(sigma^2))
+# lines(aux$sigma, type = 'l' , col = 'blue')
+# softbart_mod <- SoftBart::softbart(X = x_train,Y = y_train,X_test = x_test)
+# lines(softbart_mod$sigma, type = 'l' , col ="orange")
 # =======================
 # Doing some extra plots
 # =======================
