@@ -31,7 +31,7 @@ rspBART <- function(x_train,
                     motrbart_bool = FALSE,
                     use_bs = FALSE,
                     plot_preview = FALSE,
-                    all_var = FALSE,
+                    all_var = TRUE,
                     scale_init = FALSE,
                     update_tau_beta = FALSE,
                     main_effects_pred = FALSE,
@@ -100,10 +100,10 @@ rspBART <- function(x_train,
 
 
   # Normalising all the columns
-  # for(i in 1:ncol(x_train)){
-  #   x_train_scale[,i] <- normalize_covariates_bart(y = x_train_scale[,i],a = x_min[i], b = x_max[i])
-  #   x_test_scale[,i] <- normalize_covariates_bart(y = x_test_scale[,i],a = x_min[i], b = x_max[i])
-  # }
+  for(i in 1:ncol(x_train)){
+    x_train_scale[,i] <- normalize_covariates_bart(y = x_train_scale[,i],a = x_min[i], b = x_max[i])
+    x_test_scale[,i] <- normalize_covariates_bart(y = x_test_scale[,i],a = x_min[i], b = x_max[i])
+  }
 
 
 
@@ -575,6 +575,13 @@ rspBART <- function(x_train,
   #to each variable. Afterwards each element corresponds to a cutpoint; Finally,
   #inside that level we would have the index for the the left and right nodes;
 
+
+
+  # Create a list of arrays to store the contribution of each tree to the main effects
+  tree_main_effects <- vector("list",n_mcmc)
+  for( iii_ in 1:n_mcmc){
+    tree_main_effects[[iii_]] <- array(0,dim = c(250,length(data$basis_subindex),data$n_tree))
+  }
   # Initialing for storing post samples
   post <- 0
 
@@ -639,7 +646,7 @@ rspBART <- function(x_train,
       # }
 
       # Checking the trees variables
-      lapply(forest,function(x){(x$node0$pred_vars)}) %>% unlist ->f
+      lapply(forest,function(x){(x$node1$pred_vars)}) %>% unlist ->f
       f %>% table()
       #
       # forest[[1]] %>% lapply(function(x) x$inter) %>% unlist()
@@ -660,7 +667,7 @@ rspBART <- function(x_train,
 
       # Sampling a verb
       if(verb == "grow"){
-        if((stats::runif(n = 1)<0.5) & (interaction_term) ){
+        if((stats::runif(n = 1)<0.5) & (interaction_term) & (!all_var) ){
           forest[[t]] <- add_interaction(tree = forest[[t]],
                                          curr_part_res = partial_residuals,
                                          data = data)
@@ -672,8 +679,7 @@ rspBART <- function(x_train,
         }
       } else if (verb == "prune"){
 
-        if((stats::runif(n = 1)<0.5) & (interaction_term)){
-
+        if((stats::runif(n = 1)<0.5) & (interaction_term) & (!all_var)){
           forest[[t]] <- prune_interaction(tree = forest[[t]],
                                            curr_part_res = partial_residuals,
                                            data = data)
@@ -683,7 +689,7 @@ rspBART <- function(x_train,
                                data = data)
         }
       } else if (verb == "change"){
-        if((stats::runif(n = 1)<0.5) & (interaction_term)){
+        if((stats::runif(n = 1)<0.5) & (interaction_term) & (!all_var)){
           forest[[t]] <- change_interaction(tree = forest[[t]],
                                             curr_part_res = partial_residuals,
                                             data = data)
@@ -707,6 +713,7 @@ rspBART <- function(x_train,
       # Getting the predictions
       # tree_predictions <- getPredictions(tree = forest[[t]],
       #                                    data = data)
+      tree_main_effects[[i]][,,t] <- update_betas_aux$y_hat_train
 
       trees_fit[t,] <- rowSums(update_betas_aux$y_hat_train)
       trees_fit_test[t,] <- rowSums(update_betas_aux$y_hat_test)
@@ -740,6 +747,7 @@ rspBART <- function(x_train,
           main_effects_train_list[[ii]][i,] <- main_effects_train_list[[ii]][i,] + update_betas_aux$y_hat_train[,ii]
           main_effects_test_list[[ii]][i,] <- main_effects_test_list[[ii]][i,] + update_betas_aux$y_hat_test[,ii]
         }
+
       }
 
     }
@@ -863,9 +871,23 @@ rspBART <- function(x_train,
     if(interaction_term){
       par(mfrow = c(2,floor(NCOL(data$x_train)/2)))
       for(jj in 1:NCOL(data$x_train)){
-        plot(x_train[,jj],colMeans(main_effects_train_list_norm[[jj]][1000:i,, drop = FALSE]),main = paste0('X',jj),
-             ylab = paste0('G(X',jj,')'),ylim = c(-30,30),pch=20,xlab = paste0('x.',jj))
+        plot(x_train[,jj],colMeans(main_effects_train_list[[jj]][1:i,, drop = FALSE]),main = paste0('X',jj),
+             ylab = paste0('G(X',jj,')'),pch=20,ylim = c(-0.2,0.2),xlab = paste0('x.',jj))
 
+        for(tree_number in 1:data$n_tree){
+        # Create an auxiliar matrix for the main effect
+        aux_main_effect_matrix <- matrix(0, nrow = n_mcmc,ncol = nrow(data$x_train))
+
+        for(mcmc_aux in 1:n_mcmc){
+          aux_main_effect_matrix[mcmc_aux,] <- tree_main_effects[[mcmc_aux]][,jj,tree_number]
+        }
+
+        points(x_train[,jj],colMeans(aux_main_effect_matrix),main = paste0('X',jj),
+             col = ggplot2::alpha(tree_number,0.1), pch = 20)
+        }
+
+        points(x_train[,jj],colMeans(main_effects_train_list[[jj]][1:i,, drop = FALSE]),main = paste0('X',jj),
+             ylab = paste0('G(X',jj,')'),ylim = c(-0.5,0.5),pch=20,xlab = paste0('x.',jj))
         # if( jj ==3 ){
         #   points(x_train[,jj],20*(x_train[,jj]-0.5)^2,pch = 20, col = "blue")
         # } else if ( jj == 4){
@@ -880,6 +902,17 @@ rspBART <- function(x_train,
 
   }
 
+  currr_ <- numeric(n_mcmc)
+  get_which <- 0
+  for(test_mcmc_ in 1:n_mcmc){
+      for(test_ in 1:data$n_tree){
+        if(any(tree_main_effects[[test_mcmc_]][,11,test_]>0)){
+          currr_[test_mcmc_] <- currr_[test_mcmc_] + 1
+          get_which <- test_
+        }
+      }
+  }
+  plot(currr_)
   # # Some extra analysis
   # par(mfrow=c(2,2))
   # plot(all_tau_norm, type = 'l', ylab = expression(tau), xlab = "MCMC_iter",main = expression(tau))

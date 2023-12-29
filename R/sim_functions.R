@@ -143,6 +143,7 @@ break.mlbench.friedman1 <- function (n, sd = 1)
   y[x[,4] < 0.3] <- y[x[,4] < 0.3] - 15* (x[x[,4] < 0.3, 4]) - 5
 
   y <- y + 5 * x[, 5]
+
   if (sd > 0) {
     y <- y + rnorm(n, sd = sd)
   }

@@ -25,27 +25,54 @@ stump <- function(data,
   # Creating the base node
   node <- list()
 
+  if(data$all_var){
 
-  node[["node0"]] <- list(
-    # Creating the node number
-    node_number = 0,
-    j = j,
-    pred_vars = j,
-    inter = NA,
-    isRoot = TRUE,
-    # Creating a vector with the tranining index
-    train_index = 1:nrow(data$x_train),
-    test_index = 1:nrow(data$x_test),
-    depth_node = 0,
-    node_var = NA,
-    node_cutpoint_index = NA,
-    left = NA,
-    right = NA,
-    parent_node = NA,
-    ancestors = NA,
-    terminal = TRUE,
-    betas_vec = rep(0, length(unlist(data$basis_subindex)))
-  )
+    node[["node0"]] <- list(
+      # Creating the node number
+      node_number = 0,
+      j = j,
+      pred_vars = 1:length(data$basis_subindex),
+      inter = NA,
+      isRoot = TRUE,
+      # Creating a vector with the tranining index
+      train_index = 1:nrow(data$x_train),
+      test_index = 1:nrow(data$x_test),
+      depth_node = 0,
+      node_var = NA,
+      node_cutpoint_index = NA,
+      left = NA,
+      right = NA,
+      parent_node = NA,
+      ancestors = NA,
+      terminal = TRUE,
+      betas_vec = rep(0, length(unlist(data$basis_subindex)))
+    )
+
+  } else {
+
+    node[["node0"]] <- list(
+      # Creating the node number
+      node_number = 0,
+      j = j,
+      pred_vars = j,
+      inter = NA,
+      isRoot = TRUE,
+      # Creating a vector with the tranining index
+      train_index = 1:nrow(data$x_train),
+      test_index = 1:nrow(data$x_test),
+      depth_node = 0,
+      node_var = NA,
+      node_cutpoint_index = NA,
+      left = NA,
+      right = NA,
+      parent_node = NA,
+      ancestors = NA,
+      terminal = TRUE,
+      betas_vec = rep(0, length(unlist(data$basis_subindex)))
+    )
+  }
+
+
 
   # Returning the node
   return(node)
@@ -127,9 +154,9 @@ nodeLogLike <- function(curr_part_res,
 
       # Adding the quantities with respect to the interaction
       if(j_[jj] <= length(data$dummy_x$continuousVars)){
-        cov_aux <- cov_aux + data$B_train[[j_[jj]]][index_node,,drop = FALSE]%*%solve(data$P,t(data$B_train[[j_[jj]]][index_node,,drop = FALSE]))
+        cov_aux <- cov_aux + data$B_train[[j_[jj]]][index_node,,drop = FALSE]%*%solve((data$tau_beta[j_[jj]]*data$P),t(data$B_train[[j_[jj]]][index_node,,drop = FALSE]))
       } else {
-        cov_aux <- cov_aux + data$B_train[[j_[jj]]][index_node,,drop = FALSE]%*%solve(data$P_interaction,t(data$B_train[[j_[jj]]][index_node,,drop = FALSE]))
+        cov_aux <- cov_aux + data$B_train[[j_[jj]]][index_node,,drop = FALSE]%*%solve((data$tau_beta[j_[jj]]*data$P_interaction),t(data$B_train[[j_[jj]]][index_node,,drop = FALSE]))
       }
     # }
   }
@@ -241,13 +268,7 @@ grow <- function(tree,
   # Calculating loglikelihood for the grown node, the left and the right node
   # Recover the g_node index
 
-  if(!any(is.na(g_node$inter))){
-    # node_index_var <- c(g_node$j,which( names(data$basis_subindex) %in% paste0(g_node$j,sort(g_node$inter))))
-    node_index_var <- g_node$pred_vars # Now this information is stored here
-  } else {
-    # node_index_var <- g_node$j
-    node_index_var <- g_node$pred_vars # Now this information is stored in that variable
-  }
+  node_index_var <- g_node$pred_vars
 
   g_loglike <- nodeLogLike(curr_part_res = curr_part_res,
                            j_ = node_index_var,
@@ -366,7 +387,9 @@ add_interaction <- function(tree,
   # g_node_name <- "node2"
   g_node <- tree[[g_node_name]]
 
-
+  if(any(!is.na(g_node$inter)) & length(g_node$pred_vars)==1 & (g_node$j %in% g_node$pred_vars)){
+    stop("There is an error with the interaction terms")
+  }
   valid_terminal_node <- TRUE
   valid_count <- 0
 
@@ -383,12 +406,12 @@ add_interaction <- function(tree,
     # Sample a split var
     # ===== Uncomment this line below after ========
     p_var <- sample(interaction_candidates,size = 1)
-    # p_var <- 2
+    # p_var <- 1
     # ==============================================
 
     # In case of sampling the main effect
     if(p_var==g_node$j){
-      int_name_ <- g_node$j
+      int_name_ <- NA
     } else {
       # Getting the interaction name
       int_name_ <- paste0(sort(c(p_var,g_node$j)),collapse = '')
@@ -398,7 +421,7 @@ add_interaction <- function(tree,
     if(any(is.na(g_node$inter))){
       break
     } else {
-      if(p_var %in% g_node$inter){
+      if(int_name_ %in% names(data$basis_subindex)[g_node$pred_vars]){
         index_candidate <- which(interaction_candidates %in% p_var)
         interaction_candidates <- interaction_candidates[-index_candidate]
       } else {
@@ -421,7 +444,11 @@ add_interaction <- function(tree,
                            data = data)
 
   # Adding the interaction term on the list
-  new_j <- sort(unique(c(g_node$pred_vars,which(names(data$basis_subindex) %in% int_name_))))
+  if(!any(is.na(int_name_))){
+    new_j <- sort(unique(c(g_node$pred_vars,which(names(data$basis_subindex) %in% int_name_))))
+  } else { # The else is for INCLUDE the main effect again
+    new_j <- sort(unique(c(g_node$pred_vars,g_node$j)))
+  }
 
   # new_j <- c(10)
   new_loglike <-  nodeLogLike(curr_part_res = curr_part_res,
@@ -455,11 +482,26 @@ add_interaction <- function(tree,
     # Modifying the current node (case is the first interaction)
     if(any(is.na(tree[[g_node_name]]$inter))){
       tree[[g_node_name]]$inter <- p_var
+      if(tree[[g_node_name]]$inter==tree[[g_node_name]]$j){
+        tree[[g_node_name]]$inter <- NA
+      }
       tree[[g_node_name]]$pred_vars <- new_j
+
+      if(any(!is.na(g_node$inter)) & length(g_node$pred_vars)==1 & (g_node$j %in% g_node$pred_vars)){
+        stop("There is an error with the interaction terms ON GROW")
+      }
+
+
     } else {
+      # Defining the inter term
       tree[[g_node_name]]$inter = sort(unique(c(tree[[g_node_name]]$inter,p_var))) # Case of previous interactions
       tree[[g_node_name]]$inter <- tree[[g_node_name]]$inter[!(tree[[g_node_name]]$inter %in% tree[[g_node_name]]$j)]# Excluding the main effect
       tree[[g_node_name]]$pred_vars <- new_j
+
+
+      if(any(!is.na(g_node$inter)) & length(g_node$pred_vars)==1 & (g_node$j %in% g_node$pred_vars)){
+        stop("There is an error with the interaction terms ON GROW")
+      }
     }
 
   } else {
@@ -619,7 +661,7 @@ prune_interaction <- function(tree,
       if(!(new_p_inter_index %in% p_node$j)){
         new_p_inter <- p_node$inter[!(p_node$inter %in% new_p_inter_index)]
         if(p_node$j %in% p_node$pred_vars){ # Checking if the main effect gonna be present in the predictors
-          new_node_index_var <- c(p_node$j,which( names(data$basis_subindex) %in% paste0(sort(c(p_node$j,new_p_inter)),collapse = "")))
+          new_node_index_var <- sort(unique(c(p_node$j,which( names(data$basis_subindex) %in% apply(sapply(new_p_inter,function(x){sort(c(p_node$j,x))}),2,function(y){paste0(y,collapse = "")}) ))))
         } else {
           new_node_index_var <- sort(unique(which( names(data$basis_subindex) %in% apply(sapply(new_p_inter,function(x){sort(c(p_node$j,x))}),2,function(y){paste0(y,collapse = "")}) )) )
         }
@@ -654,6 +696,12 @@ prune_interaction <- function(tree,
     tree[[p_node_name]]$inter <- new_p_inter
     tree[[p_node_name]]$pred_vars <- new_node_index_var
 
+    g_node <- tree[[p_node_name]]
+    if(any(!is.na(g_node$inter)) & length(g_node$pred_vars)==1 & (g_node$j %in% g_node$pred_vars)){
+      stop("There is an error with the interaction terms ON PRUNE")
+    }
+
+
   } else {
     # Do nothing
   }
@@ -671,10 +719,20 @@ change_stump <- function(tree = tree,
   c_node <- tree$node0
 
   # Proposing a change to the stump
-  change_candidates <- which(!(1:NCOL(data$x_train) %in% c_node$j))
+  if(any(is.na(tree$node0$inter))){
+    change_candidates_main <- sort(which(!(1:NCOL(data$x_train) %in% c_node$j)))
+  } else {
+    change_candidates_main <- 1:NCOL(data$x_train)
+  }
+
+
+  is_interaction <- sample(c(TRUE,FALSE),size = 1)
+  if(any(is.na(tree$node0$inter))){
+    is_interaction <- TRUE
+  }
 
   # In case there's other proposal trees (only for 1-d case)
-  if(length(change_candidates)==0){
+  if(length(change_candidates_main)==0){
     # Gettina grown tree
     grown_tree <- grow(tree = tree,
                        curr_part_res = curr_part_res,
@@ -683,16 +741,27 @@ change_stump <- function(tree = tree,
   }
 
   # Print
-  new_ancestor <- sample(change_candidates,size = 1)
+  new_j <- new_pred_var <- sample(change_candidates_main,size = 1)
 
+  # Case of the main effect
+  if(new_j == c_node$j){
+    is_interaction <- FALSE
+  }
+
+  if(is_interaction){
+    new_inter <- new_pred_var
+    new_pred_var <- which(names(basis_subindex) %in% paste0(sort(c(c_node$j,new_pred_var)),collapse = ""))
+  } else {
+    new_inter <- NA
+  }
 
   stump_loglikelihood <- nodeLogLike(curr_part_res = curr_part_res,
-                                     j_ = c_node$j,
+                                     j_ = c_node$pred_vars,
                                      index_node = c_node$train_index,
                                      data = data)
 
   new_stump_loglikelihood <- nodeLogLike(curr_part_res = curr_part_res,
-                                         j_ = new_ancestor,
+                                         j_ = new_pred_var,
                                          index_node = c_node$train_index,
                                          data = data)
 
@@ -701,10 +770,19 @@ change_stump <- function(tree = tree,
   # Update the stump in case of changing the main var
   if(stats::runif(n = 1)<acceptance){
     # Modifying the node0
-    tree$node0$j <- new_ancestor
-    tree$node0$pred_vars <- new_ancestor
+    if(is_interaction){ # If I change for an interaction term the MASTER variable is kept constant
+      tree$node0$inter <- new_inter
+      tree$node0$pred_vars <- new_pred_var
+    } else {
+      tree$node0$j <- new_j
+      tree$node0$inter <- new_inter
+      tree$node0$pred_vars <- new_pred_var
+    }
   }
 
+  if(any(!is.na(tree$node0$inter)) & length(tree$node0$pred_vars)==1 & (tree$node0$j %in% tree$node0$pred_vars)){
+    stop("There is an error with the interaction terms ON CHANGE STUMP")
+  }
 
   # Returning the new tree
   return(tree)
@@ -719,11 +797,17 @@ change <- function(tree,
                    data){
 
   # Changing the stump
-  if(length(tree)==1){
+  if(length(tree)==1 & (!data$all_var)){
     change_stump_obj <- change_stump(tree = tree,
                                      curr_part_res = curr_part_res,
                                      data = data)
     return(change_stump_obj)
+  }
+
+
+  # For the seocnd case
+  if(length(tree)==1){
+    return(tree)
   }
 
   # Sampling a terminal node
@@ -799,12 +883,8 @@ change <- function(tree,
 
 
   # Getting the node_index var
-  if(!any(is.na(c_node$inter))){
-    # node_index_var <- c(c_node$j,which( names(data$basis_subindex) %in% paste0(c_node$j,sort(c_node$inter))))
-    node_index_var <- c_node$pred_vars
-  } else {
-    node_index_var <- c_node$pred_vars
-  }
+  node_index_var <- c_node$pred_vars
+
 
   # Calculating loglikelihood for the new changed nodes and the old ones
   c_loglike_left <- nodeLogLike(curr_part_res = curr_part_res,
@@ -965,6 +1045,13 @@ change_interaction <-  function(tree,
     # Erasing the terminal nodes
     tree[[c_node_name]]$inter <- new_c_inter
     tree[[c_node_name]]$pred_vars <- new_node_index_var
+
+    g_node <- tree[[c_node_name]]
+    if(any(!is.na(g_node$inter)) & length(g_node$pred_vars)==1 & (g_node$j %in% g_node$pred_vars)){
+      stop("There is an error with the interaction terms ON CHANGE")
+    }
+
+
   } else {
     # Do nothing
   }
@@ -1000,6 +1087,12 @@ updateBetas <- function(tree,
 
     # Select the current terminal node
     cu_t <- tree[[t_nodes_names[i]]]
+
+
+    if(any(!is.na(cu_t$inter)) & length(cu_t$pred_vars)==1 & (cu_t$j %in% cu_t$pred_vars)){
+      stop("There is an error with the interaction terms ON BETAS")
+    }
+
     # THIS LINE IS COMPLETELY IMPORTANT BECAUSE DEFINE THE ANCESTEORS BY j only
 
     # Node VAR INDEX NOW IS INCLUDED IN THE TERMINAL NODE

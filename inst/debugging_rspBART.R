@@ -47,7 +47,7 @@ y_train <- sim_train$y
 # x_test <- x_test[,1:5]
 n_tree <- 100
 node_min_size = 2
-n_mcmc = 5000
+n_mcmc = 2000
 n_burn = 500
 alpha = 0.5
 beta = 2
@@ -69,7 +69,7 @@ motrbart_bool <- FALSE
 use_bs <- FALSE
 plot_preview = FALSE
 intercept <- FALSE
-all_var <- TRUE
+all_var <- FALSE
 scale_init <- FALSE
 update_tau_beta <- TRUE
 main_effects_pred <- TRUE
