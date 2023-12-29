@@ -39,7 +39,8 @@ rspBART <- function(x_train,
                     interaction_list = NULL,
                     store_tree_fit = FALSE,
                     mle_prior = FALSE,
-                    linero_sampler = TRUE
+                    linero_sampler = TRUE,
+                    varimportance_bool = FALSE
 ) {
 
 
@@ -327,7 +328,9 @@ rspBART <- function(x_train,
   # df <- 3
   a_tau_beta_j <- df/2
   sigquant_beta <- 0.9
-  nsigma_beta <- tau_mu^(-1/2)
+  nsigma_beta <- (0.1*tau_mu)^(-1/2)
+  # nsigma_beta <- (tau_mu)^(-1/2)
+
   # nsigma_beta <- 1
 
   # Calculating lambda
@@ -578,9 +581,11 @@ rspBART <- function(x_train,
 
 
   # Create a list of arrays to store the contribution of each tree to the main effects
-  tree_main_effects <- vector("list",n_mcmc)
-  for( iii_ in 1:n_mcmc){
-    tree_main_effects[[iii_]] <- array(0,dim = c(250,length(data$basis_subindex),data$n_tree))
+  if(main_effects_pred){
+      tree_main_effects <- vector("list",n_mcmc)
+      for( iii_ in 1:n_mcmc){
+        tree_main_effects[[iii_]] <- array(0,dim = c(250,length(data$basis_subindex),data$n_tree))
+      }
   }
   # Initialing for storing post samples
   post <- 0
@@ -610,8 +615,9 @@ rspBART <- function(x_train,
 
 
   # Setting a matrix to store the frequency that a variable appear within terminal nodes
-  variable_importance_matrix <- matrix(0,nrow =n_mcmc, ncol = length(data$basis_subindex))
-
+  if(varimportance_bool){
+    variable_importance_matrix <- matrix(0,nrow =n_mcmc, ncol = length(data$basis_subindex))
+  }
   # Initialsing the loop
   for(i in 1:n_mcmc){
 
@@ -646,8 +652,8 @@ rspBART <- function(x_train,
       # }
 
       # Checking the trees variables
-      lapply(forest,function(x){(x$node1$pred_vars)}) %>% unlist ->f
-      f %>% table()
+      # lapply(forest,function(x){(x$node0$pred_vars)}) %>% unlist ->f
+      # f %>% table()
       #
       # forest[[1]] %>% lapply(function(x) x$inter) %>% unlist()
 
@@ -713,8 +719,9 @@ rspBART <- function(x_train,
       # Getting the predictions
       # tree_predictions <- getPredictions(tree = forest[[t]],
       #                                    data = data)
-      tree_main_effects[[i]][,,t] <- update_betas_aux$y_hat_train
-
+      if(main_effects_pred){
+          tree_main_effects[[i]][,,t] <- update_betas_aux$y_hat_train
+      }
       trees_fit[t,] <- rowSums(update_betas_aux$y_hat_train)
       trees_fit_test[t,] <- rowSums(update_betas_aux$y_hat_test)
       if(store_tree_fit){
@@ -753,7 +760,10 @@ rspBART <- function(x_train,
     }
 
 
-    variable_importance_matrix[i, ] <- varimportance(forest = forest,data = data)
+    # Counting the number of times that a vriable was selected
+    if(varimportance_bool){
+        variable_importance_matrix[i, ] <- varimportance(forest = forest,data = data)
+    }
 
     # Getting final predcition
     y_hat <- colSums(trees_fit)
@@ -837,11 +847,6 @@ rspBART <- function(x_train,
 
     for(post_iter in 1:n_mcmc){
 
-      # ==============
-      # FIX THIS LATER
-      # ==============
-
-
       if(store_tree_fit){
         for(tree_number in 1:n_tree){
           all_trees_fit_norm[[post_iter]][[tree_number]] <- unnormalize_bart(z = all_trees_fit[[post_iter]][[tree_number]],a = min_y,b = max_y)
@@ -878,10 +883,12 @@ rspBART <- function(x_train,
         # Create an auxiliar matrix for the main effect
         aux_main_effect_matrix <- matrix(0, nrow = n_mcmc,ncol = nrow(data$x_train))
 
-        for(mcmc_aux in 1:n_mcmc){
-          aux_main_effect_matrix[mcmc_aux,] <- tree_main_effects[[mcmc_aux]][,jj,tree_number]
-        }
 
+        if(main_effects_pred){
+            for(mcmc_aux in 1:n_mcmc){
+              aux_main_effect_matrix[mcmc_aux,] <- tree_main_effects[[mcmc_aux]][,jj,tree_number]
+            }
+        }
         points(x_train[,jj],colMeans(aux_main_effect_matrix),main = paste0('X',jj),
              col = ggplot2::alpha(tree_number,0.1), pch = 20)
         }
@@ -902,17 +909,17 @@ rspBART <- function(x_train,
 
   }
 
-  currr_ <- numeric(n_mcmc)
-  get_which <- 0
-  for(test_mcmc_ in 1:n_mcmc){
-      for(test_ in 1:data$n_tree){
-        if(any(tree_main_effects[[test_mcmc_]][,11,test_]>0)){
-          currr_[test_mcmc_] <- currr_[test_mcmc_] + 1
-          get_which <- test_
-        }
-      }
-  }
-  plot(currr_)
+  # currr_ <- numeric(n_mcmc)
+  # get_which <- 0
+  # for(test_mcmc_ in 1:n_mcmc){
+  #     for(test_ in 1:data$n_tree){
+  #       if(any(tree_main_effects[[test_mcmc_]][,11,test_]>0)){
+  #         currr_[test_mcmc_] <- currr_[test_mcmc_] + 1
+  #         get_which <- test_
+  #       }
+  #     }
+  # }
+  # plot(currr_)
   # # Some extra analysis
   # par(mfrow=c(2,2))
   # plot(all_tau_norm, type = 'l', ylab = expression(tau), xlab = "MCMC_iter",main = expression(tau))

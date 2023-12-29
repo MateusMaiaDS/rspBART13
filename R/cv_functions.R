@@ -469,8 +469,6 @@ all_bart_lite_interaction <- function(cv_element,
   comparison_metrics <- data.frame(metric = NULL, value = NULL, model = NULL,fold = NULL)
 
 
-
-
   spBART_interaction <- rspBART(x_train = x_train,
                     x_test = x_test,y_train = y_train,
                     n_mcmc = 2500,node_min_size = 5,alpha = alpha_,
@@ -879,8 +877,7 @@ wrapping_comparison <- function(result_){
 
   }
 
-  return(list(comparison_metrics = comparison_metrics,
-              all_tau = spBART_interaction$all_tau))
+  return(comparison_metrics)
 
 }
 

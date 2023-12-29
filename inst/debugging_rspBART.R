@@ -14,12 +14,12 @@ sd_ <- 1
 # sim_train <- mlbench.friedman1(n = n_,sd = sd_)  |> as.data.frame()
 # sim_test <- mlbench.friedman1(n = n_,sd = sd_)  |> as.data.frame()
 
-sim_train <- break.mlbench.friedman1(n = n_,sd = sd_)  |> as.data.frame()
-sim_test <- break.mlbench.friedman1(n = n_,sd = sd_)  |> as.data.frame()
+# sim_train <- break.mlbench.friedman1(n = n_,sd = sd_)  |> as.data.frame()
+# sim_test <- break.mlbench.friedman1(n = n_,sd = sd_)  |> as.data.frame()
 
 
-# sim_train <- mlbench.d1.break(n = n_,sd = 1)  |> as.data.frame()
-# sim_test <- mlbench.d1.break(n = n_,sd = 1) |> as.data.frame()
+sim_train <- mlbench.d1.break(n = n_,sd = 1)  |> as.data.frame()
+sim_test <- mlbench.d1.break(n = n_,sd = 1) |> as.data.frame()
 
 # sim_train <- mlbench.d1(n = n_,sd = 1)  |> as.data.frame()
 # sim_test <- mlbench.d1(n = n_,sd = 1) |> as.data.frame()
@@ -45,7 +45,7 @@ y_train <- sim_train$y
 
 # x_train <- x_train[,1:5]
 # x_test <- x_test[,1:5]
-n_tree <- 100
+n_tree <- 20
 node_min_size = 2
 n_mcmc = 2000
 n_burn = 500
@@ -67,7 +67,7 @@ nIknots = 2
 dif_order = 1
 motrbart_bool <- FALSE
 use_bs <- FALSE
-plot_preview = FALSE
+plot_preview = TRUE
 intercept <- FALSE
 all_var <- FALSE
 scale_init <- FALSE
@@ -81,7 +81,7 @@ interaction_term <- TRUE
 cv_object_ <- kfold(data_ = sim_train,nfold_ = 10,seed_ = 42)
 fold_ <- 1
 cv_object_fold_ <- cv_object_[[fold_]]
-
+varimportance_bool <- FALSE
 aux <- dbarts::bart(x.train = x_train,y.train = y_train,x.test = x_test)
 # plot(aux$sigma, type = 'l')
 # plot(all_tau_norm^(-1/2), type = 'l'  , ylim = c(1,4), ylab = expression(sigma^2))

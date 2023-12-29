@@ -750,7 +750,7 @@ change_stump <- function(tree = tree,
 
   if(is_interaction){
     new_inter <- new_pred_var
-    new_pred_var <- which(names(basis_subindex) %in% paste0(sort(c(c_node$j,new_pred_var)),collapse = ""))
+    new_pred_var <- which(names(data$basis_subindex) %in% paste0(sort(c(c_node$j,new_pred_var)),collapse = ""))
   } else {
     new_inter <- NA
   }
@@ -1197,7 +1197,7 @@ update_tau_betas_j <- function(forest,
   } else{
     tau_b_shape <- numeric(NCOL(data$x_train))
     tau_b_rate <- numeric(NCOL(data$x_train))
-    tau_beta_vec_aux <- numeric(NCOL(data$x_train))
+    tau_beta_vec_aux_proposal <- tau_beta_vec_aux <- numeric(NCOL(data$x_train))
   }
 
   # Iterating over all trees
@@ -1317,7 +1317,7 @@ update_tau_betas_j <- function(forest,
                                                rate = 0.5*tau_b_rate[j] + d_tau_beta)
 
         # Getting the values from the proposal
-        acceptance_tau_beta_ <- exp(extraDistr::dhcauchy(x = tau_beta_vec_aux_proposal^(-1/2),sigma = data$tau_mu^(-1/2),log = TRUE)+(-3/2)*log(tau_beta_vec_aux_proposal) - lextraDistr::dhcauchy(x = data$tau_beta[j]^(-1/2),sigma = data$tau_mu^(-1/2), log = TRUE)-(-3/2)*log(data$tau_beta[j]))
+        acceptance_tau_beta_ <- exp(extraDistr::dhcauchy(x = tau_beta_vec_aux_proposal^(-1/2),sigma = data$tau_mu^(-1/2),log = TRUE)+(-3/2)*log(tau_beta_vec_aux_proposal) - extraDistr::dhcauchy(x = data$tau_beta[j]^(-1/2),sigma = data$tau_mu^(-1/2), log = TRUE)-(-3/2)*log(data$tau_beta[j]))
 
         if(stats::runif(n = 1) < acceptance_tau_beta_){
           tau_beta_vec_aux[j] <- tau_beta_vec_aux_proposal
