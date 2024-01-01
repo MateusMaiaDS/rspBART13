@@ -8,8 +8,8 @@ sd_ <- 1
 # sim_train <- mlbench.friedman1.nointeraction(n = n_,sd = sd_)  |> as.data.frame()
 # sim_test <- mlbench.friedman1.nointeraction(n = n_,sd = sd_)  |> as.data.frame()
 
-# sim_train <- mlbench.friedman1.nointeraction.noise(n = n_,sd = sd_)  |> as.data.frame() %>% .[,c(1:4,9)]
-# sim_test <- mlbench.friedman1.nointeraction.noise(n = n_,sd = sd_)  |> as.data.frame() %>% .[,c(1:4,9)]
+sim_train <- mlbench.friedman1.nointeraction.noise(n = n_,sd = sd_)  |> as.data.frame() %>% .[,c(1:4,9)]
+sim_test <- mlbench.friedman1.nointeraction.noise(n = n_,sd = sd_)  |> as.data.frame() %>% .[,c(1:4,9)]
 
 # sim_train <- mlbench.friedman1(n = n_,sd = sd_)  |> as.data.frame()
 # sim_test <- mlbench.friedman1(n = n_,sd = sd_)  |> as.data.frame()
@@ -18,8 +18,8 @@ sd_ <- 1
 # sim_test <- break.mlbench.friedman1(n = n_,sd = sd_)  |> as.data.frame()
 
 
-sim_train <- mlbench.d1.break(n = n_,sd = 1)  |> as.data.frame()
-sim_test <- mlbench.d1.break(n = n_,sd = 1) |> as.data.frame()
+# sim_train <- mlbench.d1.break(n = n_,sd = 1)  |> as.data.frame()
+# sim_test <- mlbench.d1.break(n = n_,sd = 1) |> as.data.frame()
 
 # sim_train <- mlbench.d1(n = n_,sd = 1)  |> as.data.frame()
 # sim_test <- mlbench.d1(n = n_,sd = 1) |> as.data.frame()
@@ -45,7 +45,7 @@ y_train <- sim_train$y
 
 # x_train <- x_train[,1:5]
 # x_test <- x_test[,1:5]
-n_tree <- 20
+n_tree <- 1
 node_min_size = 2
 n_mcmc = 2000
 n_burn = 500
@@ -63,13 +63,13 @@ usequants = TRUE
 delta <- 1
 linero_sampler <- TRUE
 # Splines parameters
-nIknots = 2
-dif_order = 1
+nIknots = 5
+dif_order = 0
 motrbart_bool <- FALSE
 use_bs <- FALSE
-plot_preview = TRUE
+plot_preview = FALSE
 intercept <- FALSE
-all_var <- FALSE
+all_var <- TRUE
 scale_init <- FALSE
 update_tau_beta <- TRUE
 main_effects_pred <- TRUE
@@ -81,7 +81,7 @@ interaction_term <- TRUE
 cv_object_ <- kfold(data_ = sim_train,nfold_ = 10,seed_ = 42)
 fold_ <- 1
 cv_object_fold_ <- cv_object_[[fold_]]
-varimportance_bool <- FALSE
+varimportance_bool <- TRUE
 aux <- dbarts::bart(x.train = x_train,y.train = y_train,x.test = x_test)
 # plot(aux$sigma, type = 'l')
 # plot(all_tau_norm^(-1/2), type = 'l'  , ylim = c(1,4), ylab = expression(sigma^2))

@@ -696,6 +696,14 @@ prune_interaction <- function(tree,
     tree[[p_node_name]]$inter <- new_p_inter
     tree[[p_node_name]]$pred_vars <- new_node_index_var
 
+    if(identical(tree[[p_node_name]]$inter,tree[[p_node_name]]$pred_vars)){
+      # For the case where there was interaction with the main variable
+      tree[[p_node_name]]$inter <- NA
+      if(length(pred_vars)>1){
+        stop("Strange error here")
+      }
+    }
+
     g_node <- tree[[p_node_name]]
     if(any(!is.na(g_node$inter)) & length(g_node$pred_vars)==1 & (g_node$j %in% g_node$pred_vars)){
       stop("There is an error with the interaction terms ON PRUNE")
@@ -955,7 +963,6 @@ change_interaction <-  function(tree,
                                 curr_part_res,
                                 data){
 
-
   # Getting the maximum index number
   max_index <- get_max_node(tree)
 
@@ -980,7 +987,7 @@ change_interaction <-  function(tree,
 
   # Calculating loglikelihood for the grown node, the left and the right node
   if(!any(is.na(c_node$inter))){
-    node_index_var <- c(c_node$j,which( names(data$basis_subindex) %in% paste0(c_node$j,sort(c_node$inter))))
+    node_index_var <- c_node$pred_vars
     inter_index_ <- c_node$inter
 
     # Sampling the new interactions subset
@@ -992,31 +999,35 @@ change_interaction <-  function(tree,
         stop('Change interaction error')
       }
 
-      new_c_inter <-   sample(new_interaction_candidates,size = 1)
+      new_c_inter <-   sample(new_interaction_candidates,size = 1,replace = FALSE)
       aux_names <- apply(sapply(new_c_inter,function(x){sort(c(c_node$j,x))}),2,function(y){paste0(y,collapse = "")})
 
       if(c_node$j %in% c_node$pred_vars)  {
-        new_node_index_var <- c(c_node$j,which( names(data$basis_subindex) %in% aux_names)) #
+        new_node_index_var <- sort(unique(c(c_node$j,which( names(data$basis_subindex) %in% aux_names)))) #
       } else {
         new_node_index_var <- which( names(data$basis_subindex) %in% aux_names) #
       }
 
     } else  {
-      inter_to_change <- sample(c_node$inter,size = 1)
+      inter_to_change <- sample(x = c_node$inter,size = 1,replace = FALSE)
       new_interaction_candidates <- which(!(1:NCOL(data$x_train)) %in% c(c_node$inter,c_node$j))
       if(length(new_interaction_candidates)==0){
         return(tree)
       }
-      new_c_inter_single  <- sample(new_interaction_candidates,size = 1)
+      if(length(new_interaction_candidates)>1){
+        new_c_inter_single  <- sample(x = new_interaction_candidates,replace = FALSE,size = 1)
+      } else {
+        new_c_inter_single <- new_interaction_candidates
+      }
       inter_to_change_index <- which(c_node$inter %in% inter_to_change)
       new_c_inter <- c_node$inter
       new_c_inter[inter_to_change_index] <- new_c_inter_single
-      new_c_inter <- sort(new_c_inter)
+      new_c_inter <- sort(unique(new_c_inter))
       aux_names <- apply(sapply(new_c_inter,function(x){sort(c(c_node$j,x))}),2,function(y){paste0(y,collapse = "")})
       if(c_node$j %in% c_node$pred_vars)  {
-        new_node_index_var <- c(c_node$j,which( names(data$basis_subindex) %in% aux_names)) #
+        new_node_index_var <- sort(unique(c(c_node$j,which( names(data$basis_subindex) %in% aux_names)))) #
       } else {
-        new_node_index_var <- which( names(data$basis_subindex) %in% aux_names) #
+        new_node_index_var <- sort(unique(which( names(data$basis_subindex) %in% aux_names))) #
       }
     }
 
@@ -1024,6 +1035,9 @@ change_interaction <-  function(tree,
     stop('Prune interaction was called where there is no interaction')
   }
 
+  if( c_node$j %in% new_c_inter){
+    stop("ERRORRRR!!!")
+  }
   c_loglike <- nodeLogLike(curr_part_res = curr_part_res,
                            j_ = c_node$pred_vars,
                            index_node = c_node$train_index,
@@ -1035,6 +1049,9 @@ change_interaction <-  function(tree,
                                 index_node = c_node$train_index,
                                 data = data)
 
+  if((sum(!(c_node$pred_vars %in% new_node_index_var))!=1) & (length(c_node$pred_vars)>1)  & !identical(c_node$pred_vars,new_node_index_var) ){
+    stop("More than one variable changed there is something wrong")
+  }
 
   # Calculating the acceptance probability
   acceptance <- exp(-c_loglike+new_c_loglike)
@@ -1043,8 +1060,8 @@ change_interaction <-  function(tree,
   if(stats::runif(n = 1)<acceptance){
 
     # Erasing the terminal nodes
-    tree[[c_node_name]]$inter <- new_c_inter
-    tree[[c_node_name]]$pred_vars <- new_node_index_var
+    tree[[c_node_name]]$inter <- sort(unique(new_c_inter))
+    tree[[c_node_name]]$pred_vars <- sort(unique(new_node_index_var))
 
     g_node <- tree[[c_node_name]]
     if(any(!is.na(g_node$inter)) & length(g_node$pred_vars)==1 & (g_node$j %in% g_node$pred_vars)){
@@ -1089,8 +1106,17 @@ updateBetas <- function(tree,
     cu_t <- tree[[t_nodes_names[i]]]
 
 
+    # Some errors check
     if(any(!is.na(cu_t$inter)) & length(cu_t$pred_vars)==1 & (cu_t$j %in% cu_t$pred_vars)){
       stop("There is an error with the interaction terms ON BETAS")
+    }
+
+    if(length(cu_t$inter) != length(unique(cu_t$inter))){
+      stop("Problem with inter identify the case")
+    }
+
+    if(any(cu_t$inter %in% cu_t$j)){
+      stop("It should not be the Master Variable within the interaction")
     }
 
     # THIS LINE IS COMPLETELY IMPORTANT BECAUSE DEFINE THE ANCESTEORS BY j only

@@ -287,10 +287,12 @@ rspBART <- function(x_train,
   # Scaling "y"
   if(scale_bool){
     y_scale <- normalize_bart(y = y_train,a = min_y,b = max_y)
+    # m_tilda <- mean(diag(tcrossprod(D_train)))
 
     # New update
     # Maybe need to change that in the future ( THINK ABOUT USING M_TILDA)
-    tau_mu <- 4*n_tree*(kappa^2)
+    # tau_mu <- 4*n_tree*(kappa^2)
+    tau_mu <- n_tree
     # tau_mu <- 4*n_tree*(kappa^2)*(m_tilda)*(nIknots-1)
     # tau_mu <- 4*n_tree*(kappa^2)*(m_tilda)
 
@@ -325,18 +327,18 @@ rspBART <- function(x_train,
 
 
   # Getting hyperparameters for \tau_beta_j
-  # df <- 3
-  a_tau_beta_j <- df/2
+  tau_beta_df <- 3
+  a_tau_beta_j <- tau_beta_df/2
   sigquant_beta <- 0.9
-  nsigma_beta <- (0.1*tau_mu)^(-1/2)
+  nsigma_beta <- (tau_mu)^(-1/2)
   # nsigma_beta <- (tau_mu)^(-1/2)
 
   # nsigma_beta <- 1
 
   # Calculating lambda
   qchi_beta <- stats::qchisq(p = 1-sigquant_beta,df = df,lower.tail = 1,ncp = 0)
-  lambda_beta <- (nsigma_beta*nsigma_beta*qchi_beta)/df
-  d_tau_beta_j <- (lambda_beta*df)/2
+  lambda_beta <- (nsigma_beta*nsigma_beta*qchi_beta)/tau_beta_df
+  d_tau_beta_j <- (lambda_beta*tau_beta_df)/2
 
 
 
@@ -652,24 +654,6 @@ rspBART <- function(x_train,
       # }
 
       # Checking the trees variables
-      # lapply(forest,function(x){(x$node0$pred_vars)}) %>% unlist ->f
-      # f %>% table()
-      #
-      # forest[[1]] %>% lapply(function(x) x$inter) %>% unlist()
-
-      # forest[[5]]$node0$inter
-      # forest %>% lapply(function(x) x$node0$j) %>% unlist()
-      # forest[[2]]$node0$inter
-      # # Forcing to grow when only have a stump
-
-      # if(length(forest[[t]])==1){
-      #   if(!data$all_var){
-      #     verb <- sample(c("grow","change"),size = 1)
-      #   } else {
-      #     verb <- "grow"
-      #   }
-      # }
-
 
       # Sampling a verb
       if(verb == "grow"){
@@ -823,6 +807,7 @@ rspBART <- function(x_train,
   }
 
 
+
   # Normalising elements
   all_tau_norm <- numeric(n_mcmc)
 
@@ -877,7 +862,7 @@ rspBART <- function(x_train,
       par(mfrow = c(2,floor(NCOL(data$x_train)/2)))
       for(jj in 1:NCOL(data$x_train)){
         plot(x_train[,jj],colMeans(main_effects_train_list[[jj]][1:i,, drop = FALSE]),main = paste0('X',jj),
-             ylab = paste0('G(X',jj,')'),pch=20,ylim = c(-0.2,0.2),xlab = paste0('x.',jj))
+             ylab = paste0('G(X',jj,')'),pch=20,ylim = c(-0.5,0.5),xlab = paste0('x.',jj), col = alpha("black",1.0))
 
         for(tree_number in 1:data$n_tree){
         # Create an auxiliar matrix for the main effect
@@ -893,8 +878,8 @@ rspBART <- function(x_train,
              col = ggplot2::alpha(tree_number,0.1), pch = 20)
         }
 
-        points(x_train[,jj],colMeans(main_effects_train_list[[jj]][1:i,, drop = FALSE]),main = paste0('X',jj),
-             ylab = paste0('G(X',jj,')'),ylim = c(-0.5,0.5),pch=20,xlab = paste0('x.',jj))
+        # points(x_train[,jj],colMeans(main_effects_train_list[[jj]][1:i,, drop = FALSE]),main = paste0('X',jj),
+        #      ylab = paste0('G(X',jj,')'),ylim = c(-0.5,0.5),pch=20,xlab = paste0('x.',jj))
         # if( jj ==3 ){
         #   points(x_train[,jj],20*(x_train[,jj]-0.5)^2,pch = 20, col = "blue")
         # } else if ( jj == 4){
@@ -907,6 +892,12 @@ rspBART <- function(x_train,
       par(mfrow = c(1,1))
     }
 
+  }
+
+  # Quick check over the RMSE
+  if(plot_preview){
+    rmse(all_y_hat_test_norm[(n_burn+1):n_mcmc,] %>% colMeans(), y = sim_test$y)
+    rmse(sim_test$y, aux$yhat.test.mean)
   }
 
   # currr_ <- numeric(n_mcmc)

@@ -14,7 +14,7 @@ sd_ <- 1
 n_rep_ <- 10
 nIknots_ <- 2
 ntree_ <- 10
-dif_order_ <- 1
+dif_order_ <- 0
 use_bs_ <- FALSE
 seed_ <- 42
 y_scale_ <- TRUE
@@ -26,13 +26,14 @@ scale_init_ <- FALSE
 update_tau_beta_ <- TRUE
 inter_ <- TRUE
 mle_prior_ <- FALSE
+
 # Selecting a simulated scenarion
 # (1): "oned_break" one dimensionnal sin(2*x) with a break
 # (2): "friedman_nointer_nonoise": four-dimensional friedmna setting with no interaction terms and no extra X noise variables
 # (3): "interaction
 # type_ <- c("friedman_break")
 
-type_ <- c("friedman_nointer_noise")
+type_ <- c("friedman_inter_noise")
 
 # ================
 # Printing message
